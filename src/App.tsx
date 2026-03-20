@@ -1020,13 +1020,13 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
         )}
 
         {!isBatchMode && (
-          <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ${viewMode === "list" ? "gap-2" : "gap-3"}`}>
+          <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ${(viewMode === "list" || viewMode === "sm") ? "gap-2" : "gap-3"}`}>
             <button
               onClick={(e) => { e.stopPropagation(); onView(); }}
-              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
+              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
               title="View Full Size"
             >
-              <Maximize2 size={viewMode === "list" ? 16 : 20} />
+              <Maximize2 size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
             </button>
             <button
               onClick={async (e) => {
@@ -1075,24 +1075,24 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
                   setDownloading(false);
                 }
               }}
-              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
+              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
               title={directoryHandle ? `Save to ${directoryHandle.name}` : "Download (Choose location)"}
             >
-              {downloading ? <Loader2 className="animate-spin" size={viewMode === "list" ? 16 : 20} /> : <Download size={viewMode === "list" ? 16 : 20} />}
+              {downloading ? <Loader2 className="animate-spin" size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} /> : <Download size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
-              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
+              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
               title="Edit Tags"
             >
-              <Tag size={viewMode === "list" ? 16 : 20} />
+              <Tag size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-red-500/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/40 transition-colors`}
+              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-red-500/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/40 transition-colors`}
               title="Delete Photo"
             >
-              <Trash2 size={viewMode === "list" ? 16 : 20} />
+              <Trash2 size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
             </button>
           </div>
         )}

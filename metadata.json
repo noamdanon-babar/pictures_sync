@@ -1,5 +1,5 @@
 {
-  "name": "PhotoSync",
+  "name": "MediaSync",
   "description": "A web application to sync, tag, and manage photos from your iPhone to a central gallery.",
   "requestFramePermissions": []
 }
