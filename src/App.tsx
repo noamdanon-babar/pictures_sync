@@ -1023,13 +1023,13 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
         )}
 
         {!isBatchMode && (
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+          <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ${viewMode === "list" ? "gap-2" : "gap-3"}`}>
             <button
               onClick={(e) => { e.stopPropagation(); onView(); }}
-              className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors"
+              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
               title="View Full Size"
             >
-              <Maximize2 size={20} />
+              <Maximize2 size={viewMode === "list" ? 16 : 20} />
             </button>
             <button
               onClick={async (e) => {
@@ -1078,31 +1078,31 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
                   setDownloading(false);
                 }
               }}
-              className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors"
+              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
               title={directoryHandle ? `Save to ${directoryHandle.name}` : "Download (Choose location)"}
             >
-              {downloading ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
+              {downloading ? <Loader2 className="animate-spin" size={viewMode === "list" ? 16 : 20} /> : <Download size={viewMode === "list" ? 16 : 20} />}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setIsRenaming(!isRenaming); }}
-              className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors"
+              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
               title="Rename Media"
             >
-              <Edit2 size={20} />
+              <Edit2 size={viewMode === "list" ? 16 : 20} />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
-              className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors"
+              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
               title="Edit Tags"
             >
-              <Tag size={20} />
+              <Tag size={viewMode === "list" ? 16 : 20} />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="p-3 bg-red-500/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/40 transition-colors"
+              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-red-500/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/40 transition-colors`}
               title="Delete Photo"
             >
-              <Trash2 size={20} />
+              <Trash2 size={viewMode === "list" ? 16 : 20} />
             </button>
           </div>
         )}
