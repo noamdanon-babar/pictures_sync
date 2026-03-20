@@ -9,14 +9,20 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const CONFIG_FILE = path.join(process.cwd(), "config.json");
-const DATA_FILE = path.join(process.cwd(), "data.json");
+const STORAGE_DIR = path.join(process.cwd(), "storage");
+const CONFIG_FILE = path.join(STORAGE_DIR, "config.json");
+const DATA_FILE = path.join(STORAGE_DIR, "data.json");
+
+// Ensure storage directory exists
+if (!fs.existsSync(STORAGE_DIR)) {
+  fs.mkdirSync(STORAGE_DIR, { recursive: true });
+}
 
 // Load or initialize config
 let config = {
   uploadsDir: process.env.UPLOADS_PATH 
     ? path.resolve(process.env.UPLOADS_PATH) 
-    : path.join(process.cwd(), "uploads")
+    : path.join(STORAGE_DIR, "uploads")
 };
 
 if (fs.existsSync(CONFIG_FILE)) {
