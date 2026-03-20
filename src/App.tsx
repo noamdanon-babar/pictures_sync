@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc, Edit2 } from "lucide-react";
+import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import JSZip from "jszip";
 
@@ -892,21 +892,18 @@ export default function App() {
 
               <div className="mt-4 w-full flex items-center justify-between text-white">
                 <div className="max-w-[70%]">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-medium truncate">{selectedPhoto.originalName}</h3>
-                    <button
-                      onClick={() => {
-                        const newName = prompt("Rename media to:", selectedPhoto.originalName);
-                        if (newName && newName !== selectedPhoto.originalName) {
-                          handleRename(selectedPhoto.id, newName);
-                        }
-                      }}
-                      className="p-1 text-white/50 hover:text-white transition-colors"
-                      title="Rename"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                  </div>
+                  <h3 
+                    onClick={() => {
+                      const newName = prompt("Rename media to:", selectedPhoto.originalName);
+                      if (newName && newName !== selectedPhoto.originalName) {
+                        handleRename(selectedPhoto.id, newName);
+                      }
+                    }}
+                    className="text-lg font-medium truncate cursor-pointer hover:text-emerald-400 transition-colors"
+                    title="Click to rename"
+                  >
+                    {selectedPhoto.originalName}
+                  </h3>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {selectedPhoto.tags.map(tag => (
                       <span key={tag} className="px-2 py-0.5 bg-white/10 rounded text-xs">
@@ -1084,13 +1081,6 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
               {downloading ? <Loader2 className="animate-spin" size={viewMode === "list" ? 16 : 20} /> : <Download size={viewMode === "list" ? 16 : 20} />}
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); setIsRenaming(!isRenaming); }}
-              className={`${viewMode === "list" ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
-              title="Rename Media"
-            >
-              <Edit2 size={viewMode === "list" ? 16 : 20} />
-            </button>
-            <button
               onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
               className={`${viewMode === "list" ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
               title="Edit Tags"
@@ -1175,13 +1165,6 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
                 title="View"
               >
                 <Maximize2 size={18} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setIsRenaming(!isRenaming); }}
-                className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
-                title="Rename"
-              >
-                <Edit2 size={18} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
