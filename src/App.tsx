@@ -68,6 +68,7 @@ export default function App() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const [showProgressPanel, setShowProgressPanel] = useState(false);
+  const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [uploadsDir, setUploadsDir] = useState<string>("");
@@ -292,15 +293,15 @@ export default function App() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this photo?")) return;
-
+  const handleDelete = async (id: string | null) => {
+    if (!id) return;
     try {
       const response = await fetch(`/api/photos/${id}`, {
         method: "DELETE",
       });
       if (response.ok) {
         setPhotos(photos.filter((p) => p.id !== id));
+        setPhotoToDelete(null);
       }
     } catch (error) {
       console.error("Delete failed:", error);
@@ -845,7 +846,7 @@ export default function App() {
                   key={photo.id}
                   photo={photo}
                   viewMode={gridSize}
-                  onDelete={() => handleDelete(photo.id)}
+                  onDelete={() => setPhotoToDelete(photo.id)}
                   onUpdateTags={(tags) => handleUpdateTags(photo.id, tags)}
                   onRename={(newName) => handleRename(photo.id, newName)}
                   onView={() => setSelectedPhoto(photo)}
@@ -994,6 +995,49 @@ export default function App() {
                   <Download size={20} />
                   Download
                 </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {photoToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setPhotoToDelete(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-stone-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-stone-200 dark:border-stone-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mb-4">
+                <Trash2 className="text-red-600 dark:text-red-400" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">Delete Media?</h3>
+              <p className="text-stone-500 dark:text-stone-400 mb-6">
+                Are you sure you want to delete this file? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setPhotoToDelete(null)}
+                  className="flex-1 px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(photoToDelete)}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors"
+                >
+                  Delete
+                </button>
               </div>
             </motion.div>
           </motion.div>
