@@ -149,6 +149,27 @@ async function startServer() {
     res.json(data.photos[photoIndex]);
   });
 
+  app.patch("/api/photos/:id/rename", (req, res) => {
+    const { id } = req.params;
+    const { newName } = req.body;
+
+    if (!newName) {
+      return res.status(400).json({ error: "New name is required" });
+    }
+
+    const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    const photoIndex = data.photos.findIndex((p) => p.id === id);
+
+    if (photoIndex === -1) {
+      return res.status(404).json({ error: "Photo not found" });
+    }
+
+    data.photos[photoIndex].originalName = newName;
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+
+    res.json(data.photos[photoIndex]);
+  });
+
   app.delete("/api/photos/:id", (req, res) => {
     const { id } = req.params;
     const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));

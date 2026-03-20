@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc } from "lucide-react";
+import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc, Edit2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import JSZip from "jszip";
 
@@ -250,6 +250,24 @@ export default function App() {
       }
     } catch (error) {
       console.error("Delete failed:", error);
+    }
+  };
+
+  const handleRename = async (id: string, newName: string) => {
+    try {
+      const response = await fetch(`/api/photos/${id}/rename`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newName }),
+      });
+      if (response.ok) {
+        setPhotos(photos.map((p) => (p.id === id ? { ...p, originalName: newName } : p)));
+        if (selectedPhoto?.id === id) {
+          setSelectedPhoto({ ...selectedPhoto, originalName: newName });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to rename:", error);
     }
   };
 
@@ -755,6 +773,7 @@ export default function App() {
                   viewMode={gridSize}
                   onDelete={() => handleDelete(photo.id)}
                   onUpdateTags={(tags) => handleUpdateTags(photo.id, tags)}
+                  onRename={(newName) => handleRename(photo.id, newName)}
                   onView={() => setSelectedPhoto(photo)}
                   isSelected={selectedPhotoIds.includes(photo.id)}
                   onSelect={() => togglePhotoSelection(photo.id)}
@@ -873,7 +892,21 @@ export default function App() {
 
               <div className="mt-4 w-full flex items-center justify-between text-white">
                 <div className="max-w-[70%]">
-                  <h3 className="text-lg font-medium truncate">{selectedPhoto.originalName}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-medium truncate">{selectedPhoto.originalName}</h3>
+                    <button
+                      onClick={() => {
+                        const newName = prompt("Rename media to:", selectedPhoto.originalName);
+                        if (newName && newName !== selectedPhoto.originalName) {
+                          handleRename(selectedPhoto.id, newName);
+                        }
+                      }}
+                      className="p-1 text-white/50 hover:text-white transition-colors"
+                      title="Rename"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {selectedPhoto.tags.map(tag => (
                       <span key={tag} className="px-2 py-0.5 bg-white/10 rounded text-xs">
@@ -905,6 +938,7 @@ interface PhotoCardProps {
   viewMode: "sm" | "md" | "lg" | "list";
   onDelete: () => void | Promise<void>;
   onUpdateTags: (tags: string[]) => void | Promise<void>;
+  onRename: (newName: string) => void | Promise<void>;
   onView: () => void;
   isSelected: boolean;
   onSelect: () => void;
@@ -915,8 +949,10 @@ interface PhotoCardProps {
   saveFileToDirectory: (filename: string, blob: Blob) => Promise<boolean>;
 }
 
-function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onView, isSelected, onSelect, isBatchMode, directoryHandle, dirPermissionStatus, requestDirPermission, saveFileToDirectory }: PhotoCardProps) {
+function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, isSelected, onSelect, isBatchMode, directoryHandle, dirPermissionStatus, requestDirPermission, saveFileToDirectory }: PhotoCardProps) {
   const [isEditingTags, setIsEditingTags] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newName, setNewName] = useState(photo.originalName);
   const [newTag, setNewTag] = useState("");
   const [downloading, setDownloading] = useState(false);
 
@@ -934,6 +970,14 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onView, isSelected
 
   const removeTag = (tagToRemove: string) => {
     onUpdateTags(photo.tags.filter(t => t !== tagToRemove));
+  };
+
+  const handleRenameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newName.trim() && newName.trim() !== photo.originalName) {
+      onRename(newName.trim());
+    }
+    setIsRenaming(false);
   };
 
   return (
@@ -1040,6 +1084,13 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onView, isSelected
               {downloading ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
             </button>
             <button
+              onClick={(e) => { e.stopPropagation(); setIsRenaming(!isRenaming); }}
+              className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors"
+              title="Rename Media"
+            >
+              <Edit2 size={20} />
+            </button>
+            <button
               onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
               className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors"
               title="Edit Tags"
@@ -1060,9 +1111,26 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onView, isSelected
       <div className={`p-4 flex-1 flex flex-col justify-between ${viewMode === "list" ? "min-w-0" : ""}`}>
         <div className="flex justify-between items-start gap-4">
           <div className="min-w-0 flex-1">
-            <h4 className="font-medium text-stone-900 dark:text-stone-100 truncate mb-1" title={photo.originalName}>
-              {photo.originalName}
-            </h4>
+            {isRenaming ? (
+              <form onSubmit={handleRenameSubmit} className="mb-1">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onBlur={() => setIsRenaming(false)}
+                  className="w-full px-2 py-0.5 text-sm bg-white dark:bg-stone-800 border border-emerald-500 rounded outline-none dark:text-stone-100"
+                />
+              </form>
+            ) : (
+              <h4 
+                onClick={(e) => { e.stopPropagation(); setIsRenaming(true); }}
+                className="font-medium text-stone-900 dark:text-stone-100 truncate mb-1 cursor-pointer hover:text-emerald-600 transition-colors" 
+                title="Click to rename"
+              >
+                {photo.originalName}
+              </h4>
+            )}
             
             <div className="flex flex-wrap gap-1.5">
               {photo.tags.map(tag => (
@@ -1107,6 +1175,13 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onView, isSelected
                 title="View"
               >
                 <Maximize2 size={18} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setIsRenaming(!isRenaming); }}
+                className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                title="Rename"
+              >
+                <Edit2 size={18} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
