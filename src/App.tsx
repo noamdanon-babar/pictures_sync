@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc } from "lucide-react";
+import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc, CheckCircle2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import JSZip from "jszip";
+import { v4 as uuidv4 } from "uuid";
 
 // IndexedDB helpers for persisting directory handles
 const DB_NAME = "PhotoSyncDB";
@@ -52,11 +53,21 @@ interface Photo {
   type?: "image" | "video";
 }
 
+interface UploadTask {
+  id: string;
+  fileName: string;
+  progress: number;
+  status: 'uploading' | 'completed' | 'error';
+  error?: string;
+}
+
 export default function App() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
+  const [showProgressPanel, setShowProgressPanel] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [uploadsDir, setUploadsDir] = useState<string>("");
@@ -218,45 +229,63 @@ export default function App() {
 
     setUploading(true);
     setUploadError(null);
+    setShowProgressPanel(true);
     
-    try {
-      // Upload files in parallel with a timeout
-      const uploadPromises = Array.from(files).map(async (file: File) => {
+    const newTasks: UploadTask[] = Array.from(files).map((file: File) => ({
+      id: uuidv4(),
+      fileName: file.name,
+      progress: 0,
+      status: 'uploading'
+    }));
+    
+    setUploadTasks(prev => [...newTasks, ...prev]);
+
+    const uploadPromises = newTasks.map((task, index) => {
+      const file = files[index];
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
         const formData = new FormData();
         formData.append("photo", file);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
-        try {
-          const response = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-            signal: controller.signal,
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-            throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            setUploadTasks(prev => prev.map(t => t.id === task.id ? { ...t, progress: percentComplete } : t));
           }
-          
-          return response.json();
-        } catch (err: any) {
-          clearTimeout(timeoutId);
-          if (err.name === 'AbortError') {
-            throw new Error(`Upload timed out for ${file.name}`);
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setUploadTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'completed', progress: 100 } : t));
+            resolve(JSON.parse(xhr.responseText));
+          } else {
+            let errorMsg = `Upload failed with status ${xhr.status}`;
+            try {
+              const errorData = JSON.parse(xhr.responseText);
+              errorMsg = errorData.error || errorMsg;
+            } catch (e) {}
+            setUploadTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'error', error: errorMsg } : t));
+            reject(new Error(errorMsg));
           }
-          throw err;
-        }
+        };
+
+        xhr.onerror = () => {
+          const errorMsg = "Network error during upload";
+          setUploadTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'error', error: errorMsg } : t));
+          reject(new Error(errorMsg));
+        };
+
+        xhr.open("POST", "/api/upload");
+        xhr.send(formData);
       });
+    });
 
+    try {
       await Promise.all(uploadPromises);
       await fetchPhotos();
     } catch (error: any) {
       console.error("Upload failed:", error);
-      setUploadError(error.message || "Upload failed. Please check your connection and try again.");
+      setUploadError("Some uploads failed. Check the progress panel for details.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -975,6 +1004,84 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Upload Progress Panel */}
+      <AnimatePresence>
+        {showProgressPanel && uploadTasks.length > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-8 right-8 z-50 w-80 max-h-[400px] flex flex-col bg-white dark:bg-stone-900 rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden"
+          >
+            <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-800/50">
+              <h3 className="font-semibold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                <Upload size={18} className="text-emerald-600" />
+                Uploads
+              </h3>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setUploadTasks([])}
+                  className="text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 font-medium"
+                >
+                  Clear
+                </button>
+                <button 
+                  onClick={() => setShowProgressPanel(false)}
+                  className="p-1 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
+                >
+                  <X size={18} className="text-stone-400" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {uploadTasks.map(task => (
+                <div key={task.id} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-stone-700 dark:text-stone-300 truncate flex-1">
+                      {task.fileName}
+                    </p>
+                    <div className="shrink-0">
+                      {task.status === 'uploading' && (
+                        <span className="text-[10px] font-bold text-emerald-600">{task.progress}%</span>
+                      )}
+                      {task.status === 'completed' && (
+                        <CheckCircle2 size={16} className="text-emerald-600" />
+                      )}
+                      {task.status === 'error' && (
+                        <AlertCircle size={16} className="text-red-500" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-full bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${task.progress}%` }}
+                      className={`h-full transition-all duration-300 ${
+                        task.status === 'error' ? 'bg-red-500' : 'bg-emerald-600'
+                      }`}
+                    />
+                  </div>
+                  {task.error && (
+                    <p className="text-[10px] text-red-500 font-medium truncate">
+                      {task.error}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!showProgressPanel && uploadTasks.some(t => t.status === 'uploading') && (
+        <button 
+          onClick={() => setShowProgressPanel(true)}
+          className="fixed bottom-8 right-8 z-50 bg-emerald-600 text-white p-4 rounded-full shadow-xl hover:bg-emerald-700 transition-all animate-bounce"
+        >
+          <Upload size={24} />
+        </button>
+      )}
     </div>
   );
 }
