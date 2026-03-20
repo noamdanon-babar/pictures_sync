@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List } from "lucide-react";
+import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import JSZip from "jszip";
 
@@ -63,6 +63,8 @@ export default function App() {
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [zipping, setZipping] = useState(false);
   const [gridSize, setGridSize] = useState<"sm" | "md" | "lg" | "list">("md");
+  const [sortBy, setSortBy] = useState<"name" | "date" | "tag">("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [directoryHandle, setDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [dirPermissionStatus, setDirPermissionStatus] = useState<PermissionState | "prompt">("prompt");
   const [showSettings, setShowSettings] = useState(false);
@@ -272,6 +274,18 @@ export default function App() {
       photo.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesTags = selectedTags.length === 0 || selectedTags.every(tag => photo.tags.includes(tag));
     return matchesSearch && matchesTags;
+  }).sort((a, b) => {
+    let comparison = 0;
+    if (sortBy === "name") {
+      comparison = a.originalName.localeCompare(b.originalName);
+    } else if (sortBy === "date") {
+      comparison = new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime();
+    } else if (sortBy === "tag") {
+      const tagA = a.tags[0] || "";
+      const tagB = b.tags[0] || "";
+      comparison = tagA.localeCompare(tagB);
+    }
+    return sortOrder === "asc" ? comparison : -comparison;
   });
 
   const toggleTagFilter = (tag: string) => {
@@ -645,6 +659,38 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-1.5 rounded-2xl shrink-0 self-end md:self-center">
+            {gridSize === "list" && (
+              <div className="flex items-center gap-1 pr-2 mr-2 border-r border-stone-200 dark:border-stone-800">
+                <button
+                  onClick={() => setSortBy("name")}
+                  className={`p-2 rounded-xl transition-all ${sortBy === "name" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+                  title="Sort by Name"
+                >
+                  <ArrowUpAZ size={18} />
+                </button>
+                <button
+                  onClick={() => setSortBy("date")}
+                  className={`p-2 rounded-xl transition-all ${sortBy === "date" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+                  title="Sort by Date"
+                >
+                  <Calendar size={18} />
+                </button>
+                <button
+                  onClick={() => setSortBy("tag")}
+                  className={`p-2 rounded-xl transition-all ${sortBy === "tag" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+                  title="Sort by Tag"
+                >
+                  <Hash size={18} />
+                </button>
+                <button
+                  onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                  className="p-2 rounded-xl text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all"
+                  title={sortOrder === "asc" ? "Ascending" : "Descending"}
+                >
+                  {sortOrder === "asc" ? <SortAsc size={18} /> : <SortDesc size={18} />}
+                </button>
+              </div>
+            )}
             <button
               onClick={() => setGridSize("lg")}
               className={`p-2 rounded-xl transition-all ${gridSize === "lg" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
