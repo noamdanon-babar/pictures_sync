@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck } from "lucide-react";
+import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import JSZip from "jszip";
 
@@ -62,13 +62,29 @@ export default function App() {
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [zipping, setZipping] = useState(false);
-  const [gridSize, setGridSize] = useState<"sm" | "md" | "lg">("md");
+  const [gridSize, setGridSize] = useState<"sm" | "md" | "lg" | "list">("md");
   const [directoryHandle, setDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [dirPermissionStatus, setDirPermissionStatus] = useState<PermissionState | "prompt">("prompt");
   const [showSettings, setShowSettings] = useState(false);
   const [newUploadsDir, setNewUploadsDir] = useState("");
   const [isUpdatingUploadsDir, setIsUpdatingUploadsDir] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("darkMode");
+      return saved ? JSON.parse(saved) : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
 
   useEffect(() => {
     fetchPhotos();
@@ -395,9 +411,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans transition-colors duration-300">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-stone-200">
+      <header className="sticky top-0 z-10 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white">
@@ -407,17 +423,25 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="hidden lg:flex items-center gap-2 text-stone-400 text-xs bg-stone-100 px-3 py-1.5 rounded-lg" title={`Saving to: ${uploadsDir}`}>
+            <div className="hidden lg:flex items-center gap-2 text-stone-400 dark:text-stone-500 text-xs bg-stone-100 dark:bg-stone-800 px-3 py-1.5 rounded-lg" title={`Saving to: ${uploadsDir}`}>
               <Info size={14} />
               <span className="max-w-[150px] truncate">Storage: {uploadsDir}</span>
             </div>
+
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100 rounded-xl transition-all"
+              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
             
             <button
               onClick={() => setShowSettings(!showSettings)}
               className={`p-2 rounded-xl transition-all ${
                 showSettings 
-                  ? "bg-stone-900 text-white" 
-                  : "bg-white border border-stone-200 text-stone-600 hover:border-stone-900"
+                  ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900" 
+                  : "bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100"
               }`}
               title="Settings"
             >
@@ -431,8 +455,8 @@ export default function App() {
               }}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
                 isBatchMode 
-                  ? "bg-stone-900 text-white" 
-                  : "bg-white border border-stone-200 text-stone-600 hover:border-stone-900"
+                  ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900" 
+                  : "bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100"
               }`}
             >
               {isBatchMode ? <X size={20} /> : <CheckSquare size={20} />}
@@ -469,25 +493,44 @@ export default function App() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden mb-8"
             >
-              <div className="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
+              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-stone-100">
                     <Settings size={20} className="text-stone-400" />
                     Application Settings
                   </h2>
-                  <button onClick={() => setShowSettings(false)} className="text-stone-400 hover:text-stone-900">
+                  <button onClick={() => setShowSettings(false)} className="text-stone-400 hover:text-stone-900 dark:hover:text-stone-100">
                     <X size={20} />
                   </button>
                 </div>
 
                 <div className="space-y-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
                     <div>
-                      <h3 className="font-medium text-stone-900 flex items-center gap-2">
+                      <h3 className="font-medium text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                        <Moon size={18} className="text-emerald-600" />
+                        Appearance
+                      </h3>
+                      <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                        Choose between light and dark mode.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setIsDarkMode(!isDarkMode)}
+                      className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100 rounded-xl text-sm font-medium transition-all"
+                    >
+                      {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                      {isDarkMode ? "Switch to Light" : "Switch to Dark"}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
+                    <div>
+                      <h3 className="font-medium text-stone-900 dark:text-stone-100 flex items-center gap-2">
                         <Folder size={18} className="text-emerald-600" />
                         Default Download Folder
                       </h3>
-                      <p className="text-sm text-stone-500 mt-1">
+                      <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
                         {directoryHandle 
                           ? `Currently saving to: ${directoryHandle.name}` 
                           : "Choose a folder to save photos directly without prompts."}
@@ -504,20 +547,20 @@ export default function App() {
                           {dirPermissionStatus !== "granted" && (
                             <button
                               onClick={requestDirPermission}
-                              className="px-4 py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-xl text-sm font-medium transition-colors"
+                              className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 rounded-xl text-sm font-medium transition-colors"
                             >
                               Grant Permission
                             </button>
                           )}
                           <button
                             onClick={handleSelectDirectory}
-                            className="px-4 py-2 bg-white border border-stone-200 text-stone-600 hover:border-stone-900 rounded-xl text-sm font-medium transition-colors"
+                            className="px-4 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100 rounded-xl text-sm font-medium transition-colors"
                           >
                             Change Folder
                           </button>
                           <button
                             onClick={clearDirectory}
-                            className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl text-sm font-medium transition-colors"
+                            className="px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-sm font-medium transition-colors"
                           >
                             Clear
                           </button>
@@ -534,12 +577,12 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                    <h3 className="font-medium text-stone-900 flex items-center gap-2 mb-2">
+                  <div className="p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
+                    <h3 className="font-medium text-stone-900 dark:text-stone-100 flex items-center gap-2 mb-2">
                       <Upload size={18} className="text-emerald-600" />
                       Server Upload Directory
                     </h3>
-                    <p className="text-sm text-stone-500 mb-4">
+                    <p className="text-sm text-stone-500 dark:text-stone-400 mb-4">
                       The folder on your computer where the app stores uploaded photos.
                     </p>
                     <div className="flex gap-2">
@@ -548,17 +591,17 @@ export default function App() {
                         value={newUploadsDir}
                         onChange={(e) => setNewUploadsDir(e.target.value)}
                         placeholder="e.g. C:\Photos or /Users/me/photos"
-                        className="flex-1 px-4 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                        className="flex-1 px-4 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:text-stone-100"
                       />
                       <button
                         onClick={handleUpdateUploadsDir}
                         disabled={isUpdatingUploadsDir || newUploadsDir === uploadsDir}
-                        className="px-4 py-2 bg-stone-900 text-white hover:bg-stone-800 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+                        className="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
                       >
                         {isUpdatingUploadsDir ? "Updating..." : "Update"}
                       </button>
                     </div>
-                    <p className="text-[10px] text-stone-400 mt-2 italic">
+                    <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-2 italic">
                       Note: Changing this won't move existing photos, but new uploads will go here.
                     </p>
                   </div>
@@ -572,13 +615,13 @@ export default function App() {
         <div className="mb-8 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div className="flex-1 w-full space-y-4">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={20} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500" size={20} />
               <input
                 type="text"
                 placeholder="Search by name or tag..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white border border-stone-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:text-stone-100 transition-all"
               />
             </div>
 
@@ -591,7 +634,7 @@ export default function App() {
                     className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
                       selectedTags.includes(tag)
                         ? "bg-emerald-600 text-white"
-                        : "bg-white border border-stone-200 text-stone-600 hover:border-emerald-500"
+                        : "bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:border-emerald-500"
                     }`}
                   >
                     {tag}
@@ -601,44 +644,51 @@ export default function App() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 bg-white border border-stone-200 p-1.5 rounded-2xl shrink-0 self-end md:self-center">
+          <div className="flex items-center gap-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-1.5 rounded-2xl shrink-0 self-end md:self-center">
             <button
               onClick={() => setGridSize("lg")}
-              className={`p-2 rounded-xl transition-all ${gridSize === "lg" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-2 rounded-xl transition-all ${gridSize === "lg" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
               title="Large Grid"
             >
               <Grid2X2 size={20} />
             </button>
             <button
               onClick={() => setGridSize("md")}
-              className={`p-2 rounded-xl transition-all ${gridSize === "md" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-2 rounded-xl transition-all ${gridSize === "md" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
               title="Medium Grid"
             >
               <Grid3X3 size={20} />
             </button>
             <button
               onClick={() => setGridSize("sm")}
-              className={`p-2 rounded-xl transition-all ${gridSize === "sm" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-2 rounded-xl transition-all ${gridSize === "sm" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
               title="Small Grid"
             >
               <LayoutGrid size={20} />
+            </button>
+            <button
+              onClick={() => setGridSize("list")}
+              className={`p-2 rounded-xl transition-all ${gridSize === "list" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+              title="List View"
+            >
+              <List size={20} />
             </button>
           </div>
         </div>
 
         {/* Photo Grid */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-stone-400">
+          <div className="flex flex-col items-center justify-center py-20 text-stone-400 dark:text-stone-600">
             <Loader2 className="animate-spin mb-4" size={40} />
             <p>Loading your gallery...</p>
           </div>
         ) : filteredPhotos.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-stone-200">
-            <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-400">
+          <div className="text-center py-20 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-800">
+            <div className="w-16 h-16 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-400 dark:text-stone-600">
               <ImageIcon size={32} />
             </div>
-            <h3 className="text-lg font-medium text-stone-900">No photos found</h3>
-            <p className="text-stone-500">Try uploading some photos or adjusting your search.</p>
+            <h3 className="text-lg font-medium text-stone-900 dark:text-stone-100">No photos found</h3>
+            <p className="text-stone-500 dark:text-stone-400">Try uploading some photos or adjusting your search.</p>
           </div>
         ) : (
           <div className={`grid gap-6 ${
@@ -646,13 +696,16 @@ export default function App() {
               ? "grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8" 
               : gridSize === "md"
               ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              : "grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
+              : gridSize === "lg"
+              ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
+              : "grid-cols-1"
           }`}>
             <AnimatePresence mode="popLayout">
               {filteredPhotos.map((photo) => (
                 <PhotoCard
                   key={photo.id}
                   photo={photo}
+                  viewMode={gridSize}
                   onDelete={() => handleDelete(photo.id)}
                   onUpdateTags={(tags) => handleUpdateTags(photo.id, tags)}
                   onView={() => setSelectedPhoto(photo)}
@@ -761,9 +814,9 @@ export default function App() {
               </div>
 
               <div className="mt-4 w-full flex items-center justify-between text-white">
-                <div>
-                  <h3 className="text-lg font-medium">{selectedPhoto.originalName}</h3>
-                  <div className="flex gap-2 mt-1">
+                <div className="max-w-[70%]">
+                  <h3 className="text-lg font-medium truncate">{selectedPhoto.originalName}</h3>
+                  <div className="flex flex-wrap gap-2 mt-1">
                     {selectedPhoto.tags.map(tag => (
                       <span key={tag} className="px-2 py-0.5 bg-white/10 rounded text-xs">
                         {tag}
@@ -774,7 +827,7 @@ export default function App() {
                 <a
                   href={`/uploads/${selectedPhoto.filename}`}
                   download={selectedPhoto.originalName}
-                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-medium transition-colors"
+                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-medium transition-colors shrink-0"
                 >
                   <Download size={20} />
                   Download
@@ -791,6 +844,7 @@ export default function App() {
 interface PhotoCardProps {
   key?: string | number;
   photo: Photo;
+  viewMode: "sm" | "md" | "lg" | "list";
   onDelete: () => void | Promise<void>;
   onUpdateTags: (tags: string[]) => void | Promise<void>;
   onView: () => void;
@@ -803,7 +857,7 @@ interface PhotoCardProps {
   saveFileToDirectory: (filename: string, blob: Blob) => Promise<boolean>;
 }
 
-function PhotoCard({ photo, onDelete, onUpdateTags, onView, isSelected, onSelect, isBatchMode, directoryHandle, dirPermissionStatus, requestDirPermission, saveFileToDirectory }: PhotoCardProps) {
+function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onView, isSelected, onSelect, isBatchMode, directoryHandle, dirPermissionStatus, requestDirPermission, saveFileToDirectory }: PhotoCardProps) {
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [newTag, setNewTag] = useState("");
   const [downloading, setDownloading] = useState(false);
@@ -826,13 +880,13 @@ function PhotoCard({ photo, onDelete, onUpdateTags, onView, isSelected, onSelect
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       onClick={() => isBatchMode && onSelect()}
-      className={`group bg-white rounded-3xl overflow-hidden border transition-all cursor-pointer ${
+      className={`group bg-white dark:bg-stone-900 rounded-3xl overflow-hidden border transition-all cursor-pointer ${
         isSelected 
           ? "border-emerald-500 ring-2 ring-emerald-500/20 shadow-lg" 
-          : "border-stone-200 shadow-sm hover:shadow-md"
-      }`}
+          : "border-stone-200 dark:border-stone-800 shadow-sm hover:shadow-md"
+      } ${viewMode === "list" ? "flex flex-row h-32" : "flex flex-col"}`}
     >
-      <div className="aspect-square relative overflow-hidden bg-stone-100">
+      <div className={`${viewMode === "list" ? "w-48 h-full" : "aspect-square"} relative overflow-hidden bg-stone-100 dark:bg-stone-800 shrink-0`}>
         <img
           src={`/uploads/${photo.filename}`}
           alt={photo.originalName}
@@ -932,46 +986,76 @@ function PhotoCard({ photo, onDelete, onUpdateTags, onView, isSelected, onSelect
         )}
       </div>
 
-      <div className="p-4">
-        <h4 className="font-medium text-stone-900 truncate mb-2" title={photo.originalName}>
-          {photo.originalName}
-        </h4>
-        
-        <div className="flex flex-wrap gap-1.5">
-          {photo.tags.map(tag => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-stone-100 text-stone-600 rounded-md text-xs font-medium"
-            >
-              {tag}
+      <div className={`p-4 flex-1 flex flex-col justify-between ${viewMode === "list" ? "min-w-0" : ""}`}>
+        <div className="flex justify-between items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <h4 className="font-medium text-stone-900 dark:text-stone-100 truncate mb-1" title={photo.originalName}>
+              {photo.originalName}
+            </h4>
+            
+            <div className="flex flex-wrap gap-1.5">
+              {photo.tags.map(tag => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 rounded-md text-[10px] font-medium"
+                >
+                  {tag}
+                  {isEditingTags && (
+                    <button onClick={() => removeTag(tag)} className="hover:text-red-500">
+                      <X size={10} />
+                    </button>
+                  )}
+                </span>
+              ))}
               {isEditingTags && (
-                <button onClick={() => removeTag(tag)} className="hover:text-red-500">
-                  <X size={12} />
-                </button>
+                <div className="flex items-center gap-1 mt-1 w-full">
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addTag()}
+                    placeholder="Tag..."
+                    className="flex-1 text-[10px] bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-md px-2 py-0.5 focus:outline-none focus:border-emerald-500 dark:text-stone-100"
+                  />
+                  <button
+                    onClick={addTag}
+                    className="p-0.5 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
               )}
-            </span>
-          ))}
-          {isEditingTags && (
-            <div className="flex items-center gap-1 mt-2 w-full">
-              <input
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTag()}
-                placeholder="Add tag..."
-                className="flex-1 text-xs border border-stone-200 rounded-md px-2 py-1 focus:outline-none focus:border-emerald-500"
-              />
+            </div>
+          </div>
+
+          {viewMode === "list" && !isBatchMode && (
+            <div className="flex items-center gap-1 shrink-0">
               <button
-                onClick={addTag}
-                className="p-1 bg-emerald-600 text-white rounded-md hover:bg-emerald-700"
+                onClick={(e) => { e.stopPropagation(); onView(); }}
+                className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                title="View"
               >
-                <Plus size={14} />
+                <Maximize2 size={18} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
+                className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                title="Tags"
+              >
+                <Tag size={18} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                title="Delete"
+              >
+                <Trash2 size={18} />
               </button>
             </div>
           )}
         </div>
         
-        <p className="text-[10px] text-stone-400 mt-3 uppercase tracking-wider font-medium">
+        <p className="text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider font-medium mt-2">
           {new Date(photo.uploadDate).toLocaleDateString()}
         </p>
       </div>
