@@ -1,7 +1,47 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files } from "lucide-react";
+import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import JSZip from "jszip";
+
+// IndexedDB helpers for persisting directory handles
+const DB_NAME = "PhotoSyncDB";
+const STORE_NAME = "settings";
+const HANDLE_KEY = "downloadDirectoryHandle";
+
+async function getDB() {
+  return new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(STORE_NAME);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveHandle(handle: FileSystemDirectoryHandle | null) {
+  const db = await getDB();
+  const tx = db.transaction(STORE_NAME, "readwrite");
+  if (handle) {
+    tx.objectStore(STORE_NAME).put(handle, HANDLE_KEY);
+  } else {
+    tx.objectStore(STORE_NAME).delete(HANDLE_KEY);
+  }
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadHandle(): Promise<FileSystemDirectoryHandle | null> {
+  const db = await getDB();
+  const tx = db.transaction(STORE_NAME, "readonly");
+  const request = tx.objectStore(STORE_NAME).get(HANDLE_KEY);
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
 
 interface Photo {
   id: string;
@@ -23,20 +63,120 @@ export default function App() {
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [zipping, setZipping] = useState(false);
   const [gridSize, setGridSize] = useState<"sm" | "md" | "lg">("md");
+  const [directoryHandle, setDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [dirPermissionStatus, setDirPermissionStatus] = useState<PermissionState | "prompt">("prompt");
+  const [showSettings, setShowSettings] = useState(false);
+  const [newUploadsDir, setNewUploadsDir] = useState("");
+  const [isUpdatingUploadsDir, setIsUpdatingUploadsDir] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchPhotos();
     fetchConfig();
+    initDirectoryHandle();
   }, []);
+
+  const initDirectoryHandle = async () => {
+    if (!("showDirectoryPicker" in window)) return;
+    try {
+      const handle = await loadHandle();
+      if (handle) {
+        setDirectoryHandle(handle);
+        const status = await (handle as any).queryPermission({ mode: "readwrite" });
+        setDirPermissionStatus(status);
+      }
+    } catch (error) {
+      console.error("Failed to load directory handle:", error);
+    }
+  };
+
+  const handleSelectDirectory = async () => {
+    try {
+      const handle = await (window as any).showDirectoryPicker({
+        mode: "readwrite"
+      });
+      await saveHandle(handle);
+      setDirectoryHandle(handle);
+      setDirPermissionStatus("granted");
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        console.error("Failed to select directory:", error);
+      }
+    }
+  };
+
+  const requestDirPermission = async () => {
+    if (!directoryHandle) return;
+    try {
+      const status = await (directoryHandle as any).requestPermission({ mode: "readwrite" });
+      setDirPermissionStatus(status);
+      return status === "granted";
+    } catch (error) {
+      console.error("Failed to request permission:", error);
+      return false;
+    }
+  };
+
+  const clearDirectory = async () => {
+    await saveHandle(null);
+    setDirectoryHandle(null);
+    setDirPermissionStatus("prompt");
+  };
+
+  const saveFileToDirectory = async (filename: string, blob: Blob) => {
+    if (!directoryHandle) return false;
+
+    let hasPermission = dirPermissionStatus === "granted";
+    if (!hasPermission) {
+      hasPermission = await requestDirPermission() || false;
+    }
+
+    if (!hasPermission) return false;
+
+    try {
+      const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    } catch (error) {
+      console.error("Failed to save file to directory:", error);
+      return false;
+    }
+  };
 
   const fetchConfig = async () => {
     try {
       const response = await fetch("/api/config");
       const data = await response.json();
       setUploadsDir(data.uploadsDir);
+      setNewUploadsDir(data.uploadsDir);
     } catch (error) {
       console.error("Failed to fetch config:", error);
+    }
+  };
+
+  const handleUpdateUploadsDir = async () => {
+    if (!newUploadsDir.trim()) return;
+    setIsUpdatingUploadsDir(true);
+    try {
+      const response = await fetch("/api/config/uploads-dir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadsDir: newUploadsDir.trim() }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUploadsDir(data.uploadsDir);
+        alert("Upload directory updated successfully!");
+      } else {
+        alert(`Failed to update: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Failed to update uploads directory:", error);
+      alert("An error occurred while updating the directory.");
+    } finally {
+      setIsUpdatingUploadsDir(false);
     }
   };
 
@@ -147,23 +287,33 @@ export default function App() {
       const content = await zip.generateAsync({ type: "blob" });
       const suggestedName = `photosync-batch-${new Date().getTime()}.zip`;
 
-      // Try to use File System Access API
-      if ("showSaveFilePicker" in window) {
-        try {
-          const handle = await (window as any).showSaveFilePicker({
-            suggestedName,
-            types: [{
-              description: "ZIP Archive",
-              accept: { "application/zip": [".zip"] },
-            }],
-          });
-          const writable = await handle.createWritable();
-          await writable.write(content);
-          await writable.close();
-        } catch (err) {
-          if ((err as Error).name !== "AbortError") throw err;
+      let saved = false;
+      if (directoryHandle) {
+        saved = await saveFileToDirectory(suggestedName, content);
+      }
+
+      if (!saved) {
+        // Try to use File System Access API picker
+        if ("showSaveFilePicker" in window) {
+          try {
+            const handle = await (window as any).showSaveFilePicker({
+              suggestedName,
+              types: [{
+                description: "ZIP Archive",
+                accept: { "application/zip": [".zip"] },
+              }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(content);
+            await writable.close();
+            saved = true;
+          } catch (err) {
+            if ((err as Error).name !== "AbortError") throw err;
+          }
         }
-      } else {
+      }
+
+      if (!saved) {
         // Fallback to traditional download
         const url = window.URL.createObjectURL(content);
         const link = document.createElement("a");
@@ -190,9 +340,34 @@ export default function App() {
     
     const selectedPhotos = photos.filter(p => selectedPhotoIds.includes(p.id));
     
-    // For individual downloads, showSaveFilePicker is difficult because it requires 
-    // a user gesture for EACH file. We'll stick to traditional downloads here 
-    // but inform the user that browser settings control the location.
+    // If we have a directory handle, we can save all files without multiple prompts!
+    if (directoryHandle) {
+      let hasPermission = dirPermissionStatus === "granted";
+      if (!hasPermission) {
+        hasPermission = await requestDirPermission() || false;
+      }
+
+      if (hasPermission) {
+        setZipping(true); // Reuse zipping state for loading indicator
+        try {
+          for (const photo of selectedPhotos) {
+            const response = await fetch(`/uploads/${photo.filename}`);
+            const blob = await response.blob();
+            await saveFileToDirectory(photo.originalName, blob);
+          }
+          setSelectedPhotoIds([]);
+          setIsBatchMode(false);
+          return;
+        } catch (error) {
+          console.error("Batch individual download to directory failed:", error);
+        } finally {
+          setZipping(false);
+        }
+      }
+    }
+
+    // Fallback: For individual downloads without a directory handle, showSaveFilePicker is difficult 
+    // because it requires a user gesture for EACH file. We'll stick to traditional downloads here.
     for (let i = 0; i < selectedPhotos.length; i++) {
       const photo = selectedPhotos[i];
       const link = document.createElement("a");
@@ -238,6 +413,18 @@ export default function App() {
             </div>
             
             <button
+              onClick={() => setShowSettings(!showSettings)}
+              className={`p-2 rounded-xl transition-all ${
+                showSettings 
+                  ? "bg-stone-900 text-white" 
+                  : "bg-white border border-stone-200 text-stone-600 hover:border-stone-900"
+              }`}
+              title="Settings"
+            >
+              <Settings size={20} />
+            </button>
+
+            <button
               onClick={() => {
                 setIsBatchMode(!isBatchMode);
                 if (isBatchMode) setSelectedPhotoIds([]);
@@ -273,6 +460,114 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Settings Panel */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-8"
+            >
+              <div className="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Settings size={20} className="text-stone-400" />
+                    Application Settings
+                  </h2>
+                  <button onClick={() => setShowSettings(false)} className="text-stone-400 hover:text-stone-900">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                    <div>
+                      <h3 className="font-medium text-stone-900 flex items-center gap-2">
+                        <Folder size={18} className="text-emerald-600" />
+                        Default Download Folder
+                      </h3>
+                      <p className="text-sm text-stone-500 mt-1">
+                        {directoryHandle 
+                          ? `Currently saving to: ${directoryHandle.name}` 
+                          : "Choose a folder to save photos directly without prompts."}
+                      </p>
+                      {directoryHandle && dirPermissionStatus !== "granted" && (
+                        <p className="text-xs text-amber-600 mt-1 font-medium">
+                          Permission required to save files.
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {directoryHandle ? (
+                        <>
+                          {dirPermissionStatus !== "granted" && (
+                            <button
+                              onClick={requestDirPermission}
+                              className="px-4 py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-xl text-sm font-medium transition-colors"
+                            >
+                              Grant Permission
+                            </button>
+                          )}
+                          <button
+                            onClick={handleSelectDirectory}
+                            className="px-4 py-2 bg-white border border-stone-200 text-stone-600 hover:border-stone-900 rounded-xl text-sm font-medium transition-colors"
+                          >
+                            Change Folder
+                          </button>
+                          <button
+                            onClick={clearDirectory}
+                            className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl text-sm font-medium transition-colors"
+                          >
+                            Clear
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={handleSelectDirectory}
+                          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                        >
+                          <Folder size={18} />
+                          Select Folder
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                    <h3 className="font-medium text-stone-900 flex items-center gap-2 mb-2">
+                      <Upload size={18} className="text-emerald-600" />
+                      Server Upload Directory
+                    </h3>
+                    <p className="text-sm text-stone-500 mb-4">
+                      The folder on your computer where the app stores uploaded photos.
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newUploadsDir}
+                        onChange={(e) => setNewUploadsDir(e.target.value)}
+                        placeholder="e.g. C:\Photos or /Users/me/photos"
+                        className="flex-1 px-4 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                      />
+                      <button
+                        onClick={handleUpdateUploadsDir}
+                        disabled={isUpdatingUploadsDir || newUploadsDir === uploadsDir}
+                        className="px-4 py-2 bg-stone-900 text-white hover:bg-stone-800 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+                      >
+                        {isUpdatingUploadsDir ? "Updating..." : "Update"}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-stone-400 mt-2 italic">
+                      Note: Changing this won't move existing photos, but new uploads will go here.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Search and Filters */}
         <div className="mb-8 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div className="flex-1 w-full space-y-4">
@@ -364,6 +659,10 @@ export default function App() {
                   isSelected={selectedPhotoIds.includes(photo.id)}
                   onSelect={() => togglePhotoSelection(photo.id)}
                   isBatchMode={isBatchMode}
+                  directoryHandle={directoryHandle}
+                  dirPermissionStatus={dirPermissionStatus}
+                  requestDirPermission={requestDirPermission}
+                  saveFileToDirectory={saveFileToDirectory}
                 />
               ))}
             </AnimatePresence>
@@ -498,11 +797,16 @@ interface PhotoCardProps {
   isSelected: boolean;
   onSelect: () => void;
   isBatchMode: boolean;
+  directoryHandle: FileSystemDirectoryHandle | null;
+  dirPermissionStatus: PermissionState | "prompt";
+  requestDirPermission: () => Promise<boolean | undefined>;
+  saveFileToDirectory: (filename: string, blob: Blob) => Promise<boolean>;
 }
 
-function PhotoCard({ photo, onDelete, onUpdateTags, onView, isSelected, onSelect, isBatchMode }: PhotoCardProps) {
+function PhotoCard({ photo, onDelete, onUpdateTags, onView, isSelected, onSelect, isBatchMode, directoryHandle, dirPermissionStatus, requestDirPermission, saveFileToDirectory }: PhotoCardProps) {
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [newTag, setNewTag] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   const addTag = () => {
     if (newTag.trim() && !photo.tags.includes(newTag.trim())) {
@@ -561,39 +865,54 @@ function PhotoCard({ photo, onDelete, onUpdateTags, onView, isSelected, onSelect
             <button
               onClick={async (e) => {
                 e.stopPropagation();
-                const response = await fetch(`/uploads/${photo.filename}`);
-                const blob = await response.blob();
-                
-                if ("showSaveFilePicker" in window) {
-                  try {
-                    const handle = await (window as any).showSaveFilePicker({
-                      suggestedName: photo.originalName,
-                      types: [{
-                        description: "Image File",
-                        accept: { [blob.type]: [`.${photo.filename.split(".").pop()}`] },
-                      }],
-                    });
-                    const writable = await handle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                  } catch (err) {
-                    if ((err as Error).name !== "AbortError") console.error(err);
+                setDownloading(true);
+                try {
+                  const response = await fetch(`/uploads/${photo.filename}`);
+                  const blob = await response.blob();
+                  
+                  let saved = false;
+                  if (directoryHandle) {
+                    saved = await saveFileToDirectory(photo.originalName, blob);
                   }
-                } else {
-                  const url = window.URL.createObjectURL(blob);
-                  const link = document.createElement("a");
-                  link.href = url;
-                  link.download = photo.originalName;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  window.URL.revokeObjectURL(url);
+
+                  if (!saved) {
+                    if ("showSaveFilePicker" in window) {
+                      try {
+                        const handle = await (window as any).showSaveFilePicker({
+                          suggestedName: photo.originalName,
+                          types: [{
+                            description: "Image File",
+                            accept: { [blob.type]: [`.${photo.filename.split(".").pop()}`] },
+                          }],
+                        });
+                        const writable = await handle.createWritable();
+                        await writable.write(blob);
+                        await writable.close();
+                        saved = true;
+                      } catch (err) {
+                        if ((err as Error).name !== "AbortError") console.error(err);
+                      }
+                    }
+                  }
+
+                  if (!saved) {
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = photo.originalName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                  }
+                } finally {
+                  setDownloading(false);
                 }
               }}
               className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors"
-              title="Download (Choose location)"
+              title={directoryHandle ? `Save to ${directoryHandle.name}` : "Download (Choose location)"}
             >
-              <Download size={20} />
+              {downloading ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}

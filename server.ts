@@ -9,14 +9,30 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const UPLOADS_DIR = process.env.UPLOADS_PATH 
-  ? path.resolve(process.env.UPLOADS_PATH) 
-  : path.join(process.cwd(), "uploads");
+const CONFIG_FILE = path.join(process.cwd(), "config.json");
 const DATA_FILE = path.join(process.cwd(), "data.json");
 
+// Load or initialize config
+let config = {
+  uploadsDir: process.env.UPLOADS_PATH 
+    ? path.resolve(process.env.UPLOADS_PATH) 
+    : path.join(process.cwd(), "uploads")
+};
+
+if (fs.existsSync(CONFIG_FILE)) {
+  try {
+    const savedConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8"));
+    config = { ...config, ...savedConfig };
+  } catch (e) {
+    console.error("Failed to parse config.json", e);
+  }
+} else {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
+
 // Ensure directories and files exist
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+if (!fs.existsSync(config.uploadsDir)) {
+  fs.mkdirSync(config.uploadsDir, { recursive: true });
 }
 if (!fs.existsSync(DATA_FILE)) {
   fs.writeFileSync(DATA_FILE, JSON.stringify({ photos: [] }));
@@ -36,11 +52,12 @@ interface Data {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, UPLOADS_DIR);
+    cb(null, config.uploadsDir);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
+    const timestamp = Date.now();
+    const sanitizedName = file.originalname.replace(/[^a-z0-9.]/gi, "_").toLowerCase();
+    cb(null, `${timestamp}-${sanitizedName}`);
   },
 });
 
@@ -54,7 +71,32 @@ async function startServer() {
 
   // API Routes
   app.get("/api/config", (req, res) => {
-    res.json({ uploadsDir: UPLOADS_DIR });
+    res.json({ uploadsDir: config.uploadsDir });
+  });
+
+  app.post("/api/config/uploads-dir", (req, res) => {
+    const { uploadsDir } = req.body;
+    if (!uploadsDir || typeof uploadsDir !== "string") {
+      return res.status(400).json({ error: "Invalid uploads directory" });
+    }
+
+    const absolutePath = path.isAbsolute(uploadsDir) 
+      ? uploadsDir 
+      : path.resolve(process.cwd(), uploadsDir);
+
+    try {
+      if (!fs.existsSync(absolutePath)) {
+        fs.mkdirSync(absolutePath, { recursive: true });
+      }
+      
+      config.uploadsDir = absolutePath;
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+      
+      res.json({ success: true, uploadsDir: config.uploadsDir });
+    } catch (error) {
+      console.error("Failed to update uploads directory:", error);
+      res.status(500).json({ error: "Failed to update uploads directory" });
+    }
   });
 
   app.get("/api/photos", (req, res) => {
@@ -78,6 +120,8 @@ async function startServer() {
 
     data.photos.push(newPhoto);
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+
+    console.log(`[PhotoSync] Saved: ${newPhoto.originalName} -> ${path.join(config.uploadsDir, newPhoto.filename)}`);
 
     res.json(newPhoto);
   });
@@ -113,7 +157,7 @@ async function startServer() {
     }
 
     const photo = data.photos[photoIndex];
-    const filePath = path.join(UPLOADS_DIR, photo.filename);
+    const filePath = path.join(config.uploadsDir, photo.filename);
 
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
@@ -126,7 +170,9 @@ async function startServer() {
   });
 
   // Serve uploaded files
-  app.use("/uploads", express.static(UPLOADS_DIR));
+  app.use("/uploads", (req, res, next) => {
+    express.static(config.uploadsDir)(req, res, next);
+  });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
