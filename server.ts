@@ -44,6 +44,7 @@ interface Photo {
   originalName: string;
   tags: string[];
   uploadDate: string;
+  type?: "image" | "video";
 }
 
 interface Data {
@@ -116,6 +117,7 @@ async function startServer() {
       originalName: req.file.originalname,
       tags: [],
       uploadDate: new Date().toISOString(),
+      type: req.file.mimetype.startsWith("video/") ? "video" : "image",
     };
 
     data.photos.push(newPhoto);

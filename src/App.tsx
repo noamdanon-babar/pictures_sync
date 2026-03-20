@@ -49,6 +49,7 @@ interface Photo {
   originalName: string;
   tags: string[];
   uploadDate: string;
+  type?: "image" | "video";
 }
 
 export default function App() {
@@ -62,7 +63,7 @@ export default function App() {
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
   const [isBatchMode, setIsBatchMode] = useState(false);
   const [zipping, setZipping] = useState(false);
-  const [gridSize, setGridSize] = useState<"sm" | "md" | "lg" | "list">("md");
+  const [gridSize, setGridSize] = useState<"sm" | "md" | "lg" | "list">("list");
   const [sortBy, setSortBy] = useState<"name" | "date" | "tag">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [directoryHandle, setDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
@@ -431,9 +432,9 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white">
-              <ImageIcon size={24} />
+              <Files size={24} />
             </div>
-            <h1 className="text-xl font-semibold tracking-tight">PhotoSync</h1>
+            <h1 className="text-xl font-semibold tracking-tight">MediaSync</h1>
           </div>
 
           <div className="flex items-center gap-4">
@@ -483,14 +484,14 @@ export default function App() {
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
             >
               {uploading ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
-              <span className="hidden sm:inline">{uploading ? "Uploading..." : "Upload Photos"}</span>
+              <span className="hidden sm:inline">{uploading ? "Uploading..." : "Upload Media"}</span>
             </button>
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleUpload}
               className="hidden"
-              accept="image/*"
+              accept="image/*,video/*,.mov,.mp4"
               multiple
             />
           </div>
@@ -851,12 +852,23 @@ export default function App() {
               </button>
 
               <div className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-2xl bg-stone-900">
-                <img
-                  src={`/uploads/${selectedPhoto.filename}`}
-                  alt={selectedPhoto.originalName}
-                  className="max-w-full max-h-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
+                {selectedPhoto.filename.toLowerCase().endsWith(".mov") || 
+                 selectedPhoto.filename.toLowerCase().endsWith(".mp4") ||
+                 selectedPhoto.filename.toLowerCase().endsWith(".webm") ? (
+                  <video
+                    src={`/uploads/${selectedPhoto.filename}`}
+                    className="max-w-full max-h-full"
+                    controls
+                    autoPlay
+                  />
+                ) : (
+                  <img
+                    src={`/uploads/${selectedPhoto.filename}`}
+                    alt={selectedPhoto.originalName}
+                    className="max-w-full max-h-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
               </div>
 
               <div className="mt-4 w-full flex items-center justify-between text-white">
@@ -908,6 +920,11 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onView, isSelected
   const [newTag, setNewTag] = useState("");
   const [downloading, setDownloading] = useState(false);
 
+  const isVideo = (filename: string) => {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    return ["mp4", "mov", "webm"].includes(ext || "");
+  };
+
   const addTag = () => {
     if (newTag.trim() && !photo.tags.includes(newTag.trim())) {
       onUpdateTags([...photo.tags, newTag.trim()]);
@@ -933,12 +950,20 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onView, isSelected
       } ${viewMode === "list" ? "flex flex-row h-32" : "flex flex-col"}`}
     >
       <div className={`${viewMode === "list" ? "w-48 h-full" : "aspect-square"} relative overflow-hidden bg-stone-100 dark:bg-stone-800 shrink-0`}>
-        <img
-          src={`/uploads/${photo.filename}`}
-          alt={photo.originalName}
-          className={`w-full h-full object-cover transition-transform duration-500 ${!isBatchMode && "group-hover:scale-110"}`}
-          referrerPolicy="no-referrer"
-        />
+        {isVideo(photo.filename) ? (
+          <video
+            src={`/uploads/${photo.filename}`}
+            className="w-full h-full object-cover"
+            preload="metadata"
+          />
+        ) : (
+          <img
+            src={`/uploads/${photo.filename}`}
+            alt={photo.originalName}
+            className={`w-full h-full object-cover transition-transform duration-500 ${!isBatchMode && "group-hover:scale-110"}`}
+            referrerPolicy="no-referrer"
+          />
+        )}
         
         {/* Selection Overlay */}
         {isBatchMode && (
