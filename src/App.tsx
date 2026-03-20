@@ -56,6 +56,7 @@ export default function App() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [uploadsDir, setUploadsDir] = useState<string>("");
@@ -216,22 +217,46 @@ export default function App() {
     if (!files || files.length === 0) return;
 
     setUploading(true);
+    setUploadError(null);
     
     try {
-      // Upload files in parallel
+      // Upload files in parallel with a timeout
       const uploadPromises = Array.from(files).map(async (file: File) => {
         const formData = new FormData();
         formData.append("photo", file);
-        return fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+        try {
+          const response = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+            signal: controller.signal,
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+            throw new Error(errorData.error || `Upload failed with status ${response.status}`);
+          }
+          
+          return response.json();
+        } catch (err: any) {
+          clearTimeout(timeoutId);
+          if (err.name === 'AbortError') {
+            throw new Error(`Upload timed out for ${file.name}`);
+          }
+          throw err;
+        }
       });
 
       await Promise.all(uploadPromises);
       await fetchPhotos();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload failed:", error);
+      setUploadError(error.message || "Upload failed. Please check your connection and try again.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -522,6 +547,26 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Error Message */}
+        {uploadError && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl flex items-center justify-between gap-4"
+          >
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <Info size={20} />
+              <p className="font-medium">{uploadError}</p>
+            </div>
+            <button 
+              onClick={() => setUploadError(null)}
+              className="p-1 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
+            >
+              <X size={18} className="text-red-600 dark:text-red-400" />
+            </button>
+          </motion.div>
+        )}
+
         {/* Settings Panel */}
         <AnimatePresence>
           {showSettings && (

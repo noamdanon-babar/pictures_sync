@@ -62,7 +62,12 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  }
+});
 
 async function startServer() {
   const app = express();
@@ -195,6 +200,15 @@ async function startServer() {
   // Serve uploaded files
   app.use("/uploads", (req, res, next) => {
     express.static(config.uploadsDir)(req, res, next);
+  });
+
+  // Global error handler for multer and other errors
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("[Server Error]:", err);
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    }
+    res.status(500).json({ error: "Internal server error during upload" });
   });
 
   // Vite middleware for development
