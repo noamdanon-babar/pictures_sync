@@ -720,16 +720,16 @@ export default function App() {
         </AnimatePresence>
 
         {/* Search and Filters */}
-        <div className="mb-8 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div className="flex-1 w-full space-y-4">
+        <div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+          <div className="flex-1 w-full space-y-3">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500" size={20} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500" size={18} />
               <input
                 type="text"
                 placeholder="Search by name or tag..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:text-stone-100 transition-all"
+                className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:text-stone-100 transition-all text-sm"
               />
             </div>
 
@@ -787,31 +787,31 @@ export default function App() {
             )}
             <button
               onClick={() => setGridSize("lg")}
-              className={`p-2 rounded-xl transition-all ${gridSize === "lg" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-1.5 rounded-lg transition-all ${gridSize === "lg" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
               title="Large Grid"
             >
-              <Grid2X2 size={20} />
+              <Grid2X2 size={18} />
             </button>
             <button
               onClick={() => setGridSize("md")}
-              className={`p-2 rounded-xl transition-all ${gridSize === "md" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-1.5 rounded-lg transition-all ${gridSize === "md" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
               title="Medium Grid"
             >
-              <Grid3X3 size={20} />
+              <Grid3X3 size={18} />
             </button>
             <button
               onClick={() => setGridSize("sm")}
-              className={`p-2 rounded-xl transition-all ${gridSize === "sm" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-1.5 rounded-lg transition-all ${gridSize === "sm" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
               title="Small Grid"
             >
-              <LayoutGrid size={20} />
+              <LayoutGrid size={18} />
             </button>
             <button
               onClick={() => setGridSize("list")}
-              className={`p-2 rounded-xl transition-all ${gridSize === "list" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-1.5 rounded-lg transition-all ${gridSize === "list" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
               title="List View"
             >
-              <List size={20} />
+              <List size={18} />
             </button>
           </div>
         </div>
@@ -1180,13 +1180,13 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       onClick={() => isBatchMode && onSelect()}
-      className={`group bg-white dark:bg-stone-900 rounded-3xl overflow-hidden border transition-all cursor-pointer ${
+      className={`group bg-white dark:bg-stone-900 rounded-2xl overflow-hidden border transition-all cursor-pointer ${
         isSelected 
           ? "border-emerald-500 ring-2 ring-emerald-500/20 shadow-lg" 
           : "border-stone-200 dark:border-stone-800 shadow-sm hover:shadow-md"
-      } ${viewMode === "list" ? "flex flex-row h-32" : "flex flex-col"}`}
+      } ${viewMode === "list" ? "flex flex-row h-20" : "flex flex-col"}`}
     >
-      <div className={`${viewMode === "list" ? "w-48 h-full" : "aspect-square"} relative overflow-hidden bg-stone-100 dark:bg-stone-800 shrink-0`}>
+      <div className={`${viewMode === "list" ? "w-20 h-full" : "aspect-square"} relative overflow-hidden bg-stone-100 dark:bg-stone-800 shrink-0`}>
         {isVideo(photo.filename) ? (
           <video
             src={`/uploads/${photo.filename}`}
@@ -1294,7 +1294,7 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
         )}
       </div>
 
-      <div className={`p-4 flex-1 flex flex-col justify-between ${viewMode === "list" ? "min-w-0" : ""}`}>
+      <div className={`${viewMode === "list" ? "p-3" : "p-4"} flex-1 flex flex-col justify-between ${viewMode === "list" ? "min-w-0" : ""}`}>
         <div className="flex justify-between items-start gap-4">
           <div className="min-w-0 flex-1">
             {isRenaming ? (
@@ -1354,33 +1354,33 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
           </div>
 
           {viewMode === "list" && !isBatchMode && (
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-0.5 shrink-0">
               <button
                 onClick={(e) => { e.stopPropagation(); onView(); }}
-                className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                className="p-1.5 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
                 title="View"
               >
-                <Maximize2 size={18} />
+                <Maximize2 size={16} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
-                className="p-2 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                className="p-1.5 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
                 title="Tags"
               >
-                <Tag size={18} />
+                <Tag size={16} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                className="p-1.5 text-stone-400 hover:text-red-500 transition-colors"
                 title="Delete"
               >
-                <Trash2 size={18} />
+                <Trash2 size={16} />
               </button>
             </div>
           )}
         </div>
         
-        <p className="text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider font-medium mt-2">
+        <p className={`${viewMode === "list" ? "mt-1" : "mt-2"} text-[10px] text-stone-400 dark:text-stone-500 uppercase tracking-wider font-medium`}>
           {new Date(photo.uploadDate).toLocaleDateString()}
         </p>
       </div>
