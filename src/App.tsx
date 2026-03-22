@@ -100,12 +100,20 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const root = window.document.documentElement;
+    const body = window.document.body;
     if (isDarkMode) {
-      document.documentElement.classList.add("dark");
+      root.classList.add("dark");
+      body.classList.add("dark");
     } else {
-      document.documentElement.classList.remove("dark");
+      root.classList.remove("dark");
+      body.classList.remove("dark");
     }
-    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+    try {
+      localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+    } catch (e) {
+      console.error("Failed to save dark mode preference", e);
+    }
   }, [isDarkMode]);
 
   useEffect(() => {
