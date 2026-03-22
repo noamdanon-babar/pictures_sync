@@ -253,6 +253,81 @@ export default function App() {
     }
   };
 
+  const handleResetUploadsDir = async () => {
+    const defaultDir = "storage/uploads";
+    setNewUploadsDir(defaultDir);
+    setIsUpdatingUploadsDir(true);
+    try {
+      const response = await fetch("/api/config/uploads-dir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadsDir: defaultDir }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUploadsDir(data.uploadsDir);
+        await handleScanFolder();
+      }
+    } catch (error) {
+      console.error("Failed to reset uploads directory:", error);
+    } finally {
+      setIsUpdatingUploadsDir(false);
+    }
+  };
+
+  const handleScanLocalFolder = async () => {
+    if (!directoryHandle) {
+      alert("Please select a local folder first using the 'Local Sync' button.");
+      return;
+    }
+
+    const hasPermission = await requestDirPermission();
+    if (!hasPermission) return;
+
+    setIsScanning(true);
+    let importedCount = 0;
+    try {
+      const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"];
+      const videoExtensions = [".mp4", ".mov", ".webm", ".avi", ".mkv"];
+      const existingFilenames = new Set(photos.map(p => p.originalName));
+
+      for await (const entry of (directoryHandle as any).values()) {
+        if (entry.kind === "file") {
+          const file = await entry.getFile();
+          if (existingFilenames.has(file.name)) continue;
+
+          const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+          if (imageExtensions.includes(ext) || videoExtensions.includes(ext)) {
+            const formData = new FormData();
+            formData.append("photo", file);
+            if (currentFolderId) formData.append("folderId", currentFolderId);
+
+            const response = await fetch("/api/upload", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (response.ok) {
+              importedCount++;
+            }
+          }
+        }
+      }
+
+      if (importedCount > 0) {
+        await fetchPhotos();
+        alert(`Local scan complete! Imported ${importedCount} new items.`);
+      } else {
+        alert("Local scan complete! No new items found.");
+      }
+    } catch (error) {
+      console.error("Local scan failed:", error);
+      alert("Failed to scan local folder.");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   const fetchPhotos = async () => {
     try {
       const response = await fetch("/api/photos");
@@ -270,14 +345,16 @@ export default function App() {
     try {
       const response = await fetch("/api/scan", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId: currentFolderId }),
       });
       const data = await response.json();
       if (response.ok) {
         if (data.count > 0) {
           await fetchPhotos();
-          alert(`Scan complete! Found and imported ${data.count} new items.`);
+          alert(`Scan complete! Found and imported ${data.count} new items from ${data.scannedDir}.`);
         } else {
-          alert("Scan complete! No new items found.");
+          alert(`Scan complete! No new items found in ${data.scannedDir}.`);
         }
       } else {
         alert(`Scan failed: ${data.error}`);
@@ -537,7 +614,7 @@ export default function App() {
     const matchesSearch = photo.originalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       photo.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesTags = selectedTags.length === 0 || selectedTags.every(tag => photo.tags.includes(tag));
-    const matchesFolder = photo.folderId === (currentFolderId || null);
+    const matchesFolder = (photo.folderId || null) === (currentFolderId || null);
     return matchesSearch && matchesTags && matchesFolder;
   }).sort((a, b) => {
     let comparison = 0;
@@ -900,14 +977,33 @@ export default function App() {
                         {isUpdatingUploadsDir ? "Updating..." : "Update"}
                       </button>
                       <button
+                        onClick={handleResetUploadsDir}
+                        disabled={isUpdatingUploadsDir}
+                        className="px-4 py-2 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-300 dark:hover:bg-stone-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+                        title="Reset to default storage/uploads"
+                      >
+                        Reset
+                      </button>
+                      <button
                         onClick={handleScanFolder}
                         disabled={isScanning}
                         className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
-                        title="Scan current folder for new media"
+                        title="Scan server folder for new media"
                       >
                         {isScanning ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
-                        Scan
+                        Scan Server
                       </button>
+                      {directoryHandle && (
+                        <button
+                          onClick={handleScanLocalFolder}
+                          disabled={isScanning}
+                          className="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+                          title="Scan local folder for new media"
+                        >
+                          {isScanning ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
+                          Scan Local
+                        </button>
+                      )}
                     </div>
                     <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-2 italic">
                       Note: Changing this won't move existing photos, but new uploads will go here.

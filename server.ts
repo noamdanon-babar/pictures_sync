@@ -121,6 +121,13 @@ async function startServer() {
 
   app.post("/api/scan", (req, res) => {
     try {
+      const { folderId } = req.body;
+      if (!fs.existsSync(config.uploadsDir)) {
+        return res.status(400).json({ 
+          error: `Uploads directory does not exist: ${config.uploadsDir}. Please check your settings.` 
+        });
+      }
+
       const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
       const existingFilenames = new Set(data.photos.map(p => p.filename));
       const files = fs.readdirSync(config.uploadsDir);
@@ -145,7 +152,8 @@ async function startServer() {
               originalName: file,
               tags: ["imported"],
               uploadDate: stats.mtime.toISOString(),
-              type: isVideo ? "video" : "image"
+              type: isVideo ? "video" : "image",
+              folderId: folderId || null
             });
           }
         }
@@ -156,10 +164,15 @@ async function startServer() {
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
       }
 
-      res.json({ success: true, count: newPhotos.length, photos: newPhotos });
+      res.json({ 
+        success: true, 
+        count: newPhotos.length, 
+        photos: newPhotos,
+        scannedDir: config.uploadsDir
+      });
     } catch (error) {
       console.error("Failed to scan directory:", error);
-      res.status(500).json({ error: "Failed to scan directory" });
+      res.status(500).json({ error: "Failed to scan directory. Ensure the server has access to the configured path." });
     }
   });
 
