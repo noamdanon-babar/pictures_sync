@@ -44,6 +44,12 @@ async function loadHandle(): Promise<FileSystemDirectoryHandle | null> {
   });
 }
 
+interface Folder {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 interface Photo {
   id: string;
   filename: string;
@@ -51,6 +57,7 @@ interface Photo {
   tags: string[];
   uploadDate: string;
   type?: "image" | "video";
+  folderId?: string | null;
 }
 
 interface UploadTask {
@@ -90,6 +97,13 @@ export default function App() {
   const [newUploadsDir, setNewUploadsDir] = useState("");
   const [isUpdatingUploadsDir, setIsUpdatingUploadsDir] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [showMoveToFolderModal, setShowMoveToFolderModal] = useState(false);
+  const [isMovingPhotos, setIsMovingPhotos] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("darkMode");
@@ -118,9 +132,20 @@ export default function App() {
 
   useEffect(() => {
     fetchPhotos();
+    fetchFolders();
     fetchConfig();
     initDirectoryHandle();
   }, []);
+
+  const fetchFolders = async () => {
+    try {
+      const response = await fetch("/api/folders");
+      const data = await response.json();
+      setFolders(data);
+    } catch (error) {
+      console.error("Failed to fetch folders:", error);
+    }
+  };
 
   const initDirectoryHandle = async () => {
     if (!("showDirectoryPicker" in window)) return;
@@ -288,6 +313,9 @@ export default function App() {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();
         formData.append("photo", file);
+        if (currentFolderId) {
+          formData.append("folderId", currentFolderId);
+        }
 
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) {
@@ -371,6 +399,81 @@ export default function App() {
     }
   };
 
+  const handleMovePhotos = async (folderId: string | null) => {
+    if (selectedPhotoIds.length === 0) return;
+    setIsMovingPhotos(true);
+    try {
+      const response = await fetch("/api/photos/batch-move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedPhotoIds, folderId }),
+      });
+      if (response.ok) {
+        await fetchPhotos();
+        setSelectedPhotoIds([]);
+        setIsBatchMode(false);
+        setShowMoveToFolderModal(false);
+      }
+    } catch (error) {
+      console.error("Failed to move photos:", error);
+    } finally {
+      setIsMovingPhotos(false);
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    setIsCreatingFolder(true);
+    try {
+      const response = await fetch("/api/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newFolderName.trim() }),
+      });
+      if (response.ok) {
+        const newFolder = await response.json();
+        setFolders(prev => [...prev, newFolder]);
+        setNewFolderName("");
+        setShowNewFolderModal(false);
+      }
+    } catch (error) {
+      console.error("Failed to create folder:", error);
+    } finally {
+      setIsCreatingFolder(false);
+    }
+  };
+
+  const handleDeleteFolder = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this folder? Photos inside will be moved to the root gallery.")) return;
+    try {
+      const response = await fetch(`/api/folders/${id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setFolders(prev => prev.filter(f => f.id !== id));
+        if (currentFolderId === id) setCurrentFolderId(null);
+        await fetchPhotos();
+      }
+    } catch (error) {
+      console.error("Failed to delete folder:", error);
+    }
+  };
+
+  const handleRenameFolder = async (id: string, newName: string) => {
+    try {
+      const response = await fetch(`/api/folders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (response.ok) {
+        setFolders(prev => prev.map(f => f.id === id ? { ...f, name: newName } : f));
+      }
+    } catch (error) {
+      console.error("Failed to rename folder:", error);
+    }
+  };
+
   const handleBatchTags = async () => {
     if (selectedPhotoIds.length === 0 || !batchTagsInput.trim()) return;
     setIsApplyingBatchTags(true);
@@ -434,7 +537,8 @@ export default function App() {
     const matchesSearch = photo.originalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       photo.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesTags = selectedTags.length === 0 || selectedTags.every(tag => photo.tags.includes(tag));
-    return matchesSearch && matchesTags;
+    const matchesFolder = photo.folderId === (currentFolderId || null);
+    return matchesSearch && matchesTags && matchesFolder;
   }).sort((a, b) => {
     let comparison = 0;
     if (sortBy === "name") {
@@ -815,6 +919,53 @@ export default function App() {
           )}
         </AnimatePresence>
 
+        {/* Folder Navigation */}
+        <div className="mb-6 flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => setCurrentFolderId(null)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all shrink-0 ${
+              currentFolderId === null
+                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                : "bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:border-emerald-500"
+            }`}
+          >
+            <ImageIcon size={16} />
+            All Photos
+          </button>
+          
+          {folders.map(folder => (
+            <div key={folder.id} className="relative group shrink-0">
+              <button
+                onClick={() => setCurrentFolderId(folder.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  currentFolderId === folder.id
+                    ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+                    : "bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:border-emerald-500"
+                }`}
+              >
+                <Folder size={16} />
+                {folder.name}
+              </button>
+              <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id); }}
+                  className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-sm"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button
+            onClick={() => setShowNewFolderModal(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-dashed border-stone-300 dark:border-stone-700 text-stone-500 dark:text-stone-400 hover:border-emerald-500 hover:text-emerald-600 transition-all shrink-0"
+          >
+            <Plus size={16} />
+            New Folder
+          </button>
+        </div>
+
         {/* Search and Filters */}
         <div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div className="flex-1 w-full space-y-3">
@@ -1001,6 +1152,15 @@ export default function App() {
                 >
                   <Files size={18} />
                   Individual
+                </button>
+                <button
+                  onClick={() => setShowMoveToFolderModal(true)}
+                  disabled={selectedPhotoIds.length === 0 || zipping}
+                  className="flex items-center gap-2 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 px-4 py-2 rounded-xl font-medium transition-all"
+                  title="Move selected items to a folder"
+                >
+                  <FolderCheck size={18} />
+                  Move
                 </button>
                 <button
                   onClick={() => setShowBatchTagModal(true)}
@@ -1257,7 +1417,111 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Upload Progress Panel */}
+        {/* New Folder Modal */}
+        <AnimatePresence>
+          {showNewFolderModal && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white dark:bg-stone-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-stone-100 dark:border-stone-800"
+              >
+                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 text-emerald-600 mx-auto">
+                  <Folder size={32} />
+                </div>
+                <h3 className="text-2xl font-bold text-stone-900 dark:text-stone-100 text-center mb-2">New Folder</h3>
+                <p className="text-stone-500 dark:text-stone-400 text-center mb-6">Enter a name for your new folder.</p>
+                
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Folder name..."
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+                  className="w-full px-4 py-3 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl mb-6 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:text-stone-100"
+                />
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowNewFolderModal(false)}
+                    className="flex-1 px-6 py-3 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-semibold rounded-2xl hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateFolder}
+                    disabled={isCreatingFolder || !newFolderName.trim()}
+                    className="flex-1 px-6 py-3 bg-emerald-600 text-white font-semibold rounded-2xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {isCreatingFolder ? <Loader2 className="animate-spin" size={20} /> : "Create"}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Move to Folder Modal */}
+        <AnimatePresence>
+          {showMoveToFolderModal && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white dark:bg-stone-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-stone-100 dark:border-stone-800"
+              >
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 text-blue-600 mx-auto">
+                  <FolderCheck size={32} />
+                </div>
+                <h3 className="text-2xl font-bold text-stone-900 dark:text-stone-100 text-center mb-2">Move {selectedPhotoIds.length} items</h3>
+                <p className="text-stone-500 dark:text-stone-400 text-center mb-6">Select a destination folder.</p>
+                
+                <div className="max-h-60 overflow-y-auto space-y-2 mb-6 pr-2 custom-scrollbar">
+                  <button
+                    onClick={() => handleMovePhotos(null)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left group"
+                  >
+                    <div className="w-10 h-10 bg-stone-100 dark:bg-stone-800 rounded-xl flex items-center justify-center text-stone-400 group-hover:bg-white dark:group-hover:bg-stone-700">
+                      <ImageIcon size={20} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-stone-900 dark:text-stone-100">Root Gallery</p>
+                      <p className="text-xs text-stone-500">Main collection</p>
+                    </div>
+                  </button>
+
+                  {folders.map(folder => (
+                    <button
+                      key={folder.id}
+                      onClick={() => handleMovePhotos(folder.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left group"
+                    >
+                      <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-white dark:group-hover:bg-stone-700">
+                        <Folder size={20} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-stone-900 dark:text-stone-100">{folder.name}</p>
+                        <p className="text-xs text-stone-500">Folder</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowMoveToFolderModal(false)}
+                    className="flex-1 px-6 py-3 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-semibold rounded-2xl hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       <AnimatePresence>
         {showProgressPanel && uploadTasks.length > 0 && (
           <motion.div

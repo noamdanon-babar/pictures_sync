@@ -41,7 +41,7 @@ if (!fs.existsSync(config.uploadsDir)) {
   fs.mkdirSync(config.uploadsDir, { recursive: true });
 }
 if (!fs.existsSync(DATA_FILE)) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify({ photos: [] }));
+  fs.writeFileSync(DATA_FILE, JSON.stringify({ photos: [], folders: [] }));
 }
 
 interface Photo {
@@ -51,10 +51,18 @@ interface Photo {
   tags: string[];
   uploadDate: string;
   type?: "image" | "video";
+  folderId?: string | null;
+}
+
+interface Folder {
+  id: string;
+  name: string;
+  createdAt: string;
 }
 
 interface Data {
   photos: Photo[];
+  folders: Folder[];
 }
 
 const storage = multer.diskStorage({
@@ -160,11 +168,82 @@ async function startServer() {
     res.json(data.photos);
   });
 
+  app.get("/api/folders", (req, res) => {
+    const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    res.json(data.folders || []);
+  });
+
+  app.post("/api/folders", (req, res) => {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: "Folder name is required" });
+
+    const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    if (!data.folders) data.folders = [];
+
+    const newFolder: Folder = {
+      id: uuidv4(),
+      name,
+      createdAt: new Date().toISOString()
+    };
+
+    data.folders.push(newFolder);
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    res.json(newFolder);
+  });
+
+  app.patch("/api/folders/:id", (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: "Folder name is required" });
+
+    const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    const folderIndex = data.folders.findIndex(f => f.id === id);
+    if (folderIndex === -1) return res.status(404).json({ error: "Folder not found" });
+
+    data.folders[folderIndex].name = name;
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    res.json(data.folders[folderIndex]);
+  });
+
+  app.delete("/api/folders/:id", (req, res) => {
+    const { id } = req.params;
+    const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    
+    // Remove folder
+    data.folders = data.folders.filter(f => f.id !== id);
+    
+    // Move photos in this folder to root
+    data.photos = data.photos.map(p => p.folderId === id ? { ...p, folderId: null } : p);
+    
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    res.json({ success: true });
+  });
+
+  app.post("/api/photos/batch-move", (req, res) => {
+    const { ids, folderId } = req.body;
+    if (!Array.isArray(ids)) return res.status(400).json({ error: "IDs must be an array" });
+
+    const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    let updatedCount = 0;
+
+    data.photos = data.photos.map(photo => {
+      if (ids.includes(photo.id)) {
+        updatedCount++;
+        return { ...photo, folderId: folderId || null };
+      }
+      return photo;
+    });
+
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    res.json({ success: true, updatedCount });
+  });
+
   app.post("/api/upload", upload.single("photo"), (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
+    const { folderId } = req.body;
     const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
     const newPhoto: Photo = {
       id: uuidv4(),
@@ -173,6 +252,7 @@ async function startServer() {
       tags: [],
       uploadDate: new Date().toISOString(),
       type: req.file.mimetype.startsWith("video/") ? "video" : "image",
+      folderId: folderId || null,
     };
 
     data.photos.push(newPhoto);
