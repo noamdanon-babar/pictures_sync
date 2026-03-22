@@ -176,6 +176,27 @@ async function startServer() {
     }
   });
 
+  app.post("/api/photos/batch-move", (req, res) => {
+    const { ids, folderId } = req.body;
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ error: "IDs must be an array" });
+    }
+
+    const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    let updatedCount = 0;
+
+    data.photos = data.photos.map((photo) => {
+      if (ids.includes(photo.id)) {
+        updatedCount++;
+        return { ...photo, folderId: folderId || null };
+      }
+      return photo;
+    });
+
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    res.json({ success: true, updatedCount });
+  });
+
   app.get("/api/photos", (req, res) => {
     const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
     res.json(data.photos);

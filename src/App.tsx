@@ -1193,6 +1193,7 @@ export default function App() {
                   onUpdateTags={(tags) => handleUpdateTags(photo.id, tags)}
                   onRename={(newName) => handleRename(photo.id, newName)}
                   onView={() => setSelectedPhoto(photo)}
+                  onMove={() => { setSelectedPhotoIds([photo.id]); setShowMoveToFolderModal(true); }}
                   isSelected={selectedPhotoIds.includes(photo.id)}
                   onSelect={() => togglePhotoSelection(photo.id)}
                   isBatchMode={isBatchMode}
@@ -1706,6 +1707,7 @@ interface PhotoCardProps {
   onUpdateTags: (tags: string[]) => void | Promise<void>;
   onRename: (newName: string) => void | Promise<void>;
   onView: () => void;
+  onMove: () => void;
   isSelected: boolean;
   onSelect: () => void;
   isBatchMode: boolean;
@@ -1715,7 +1717,7 @@ interface PhotoCardProps {
   saveFileToDirectory: (filename: string, blob: Blob) => Promise<boolean>;
 }
 
-function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, isSelected, onSelect, isBatchMode, directoryHandle, dirPermissionStatus, requestDirPermission, saveFileToDirectory }: PhotoCardProps) {
+function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, onMove, isSelected, onSelect, isBatchMode, directoryHandle, dirPermissionStatus, requestDirPermission, saveFileToDirectory }: PhotoCardProps) {
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(photo.originalName);
@@ -1857,6 +1859,13 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
               <Tag size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
             </button>
             <button
+              onClick={(e) => { e.stopPropagation(); onMove(); }}
+              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
+              title="Move to Folder"
+            >
+              <FolderCheck size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
+            </button>
+            <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-red-500/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/40 transition-colors`}
               title="Delete Photo"
@@ -1941,6 +1950,13 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
                 title="Tags"
               >
                 <Tag size={16} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onMove(); }}
+                className="p-1.5 text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
+                title="Move"
+              >
+                <FolderCheck size={16} />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete(); }}
