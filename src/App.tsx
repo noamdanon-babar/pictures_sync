@@ -69,6 +69,8 @@ export default function App() {
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const [showProgressPanel, setShowProgressPanel] = useState(false);
   const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
+  const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
+  const [isDeletingBatch, setIsDeletingBatch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [uploadsDir, setUploadsDir] = useState<string>("");
@@ -333,6 +335,28 @@ export default function App() {
       }
     } catch (error) {
       console.error("Delete failed:", error);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedPhotoIds.length === 0) return;
+    setIsDeletingBatch(true);
+    try {
+      const response = await fetch("/api/photos/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedPhotoIds }),
+      });
+      if (response.ok) {
+        setPhotos(photos.filter((p) => !selectedPhotoIds.includes(p.id)));
+        setSelectedPhotoIds([]);
+        setIsBatchMode(false);
+        setShowBatchDeleteConfirm(false);
+      }
+    } catch (error) {
+      console.error("Batch delete failed:", error);
+    } finally {
+      setIsDeletingBatch(false);
     }
   };
 
@@ -944,6 +968,15 @@ export default function App() {
                   Individual
                 </button>
                 <button
+                  onClick={() => setShowBatchDeleteConfirm(true)}
+                  disabled={selectedPhotoIds.length === 0 || zipping}
+                  className="flex items-center gap-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 disabled:opacity-50 px-4 py-2 rounded-xl font-medium transition-all"
+                  title="Delete selected items"
+                >
+                  <Trash2 size={18} />
+                  Delete
+                </button>
+                <button
                   onClick={() => {
                     setIsBatchMode(false);
                     setSelectedPhotoIds([]);
@@ -1074,6 +1107,51 @@ export default function App() {
                   className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors"
                 >
                   Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Batch Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showBatchDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowBatchDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-stone-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-stone-200 dark:border-stone-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mb-4">
+                <Trash2 className="text-red-600 dark:text-red-400" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">Delete {selectedPhotoIds.length} Items?</h3>
+              <p className="text-stone-500 dark:text-stone-400 mb-6">
+                Are you sure you want to delete these {selectedPhotoIds.length} files? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowBatchDeleteConfirm(false)}
+                  disabled={isDeletingBatch}
+                  className="flex-1 px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl font-medium transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBatchDelete}
+                  disabled={isDeletingBatch}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isDeletingBatch ? <Loader2 className="animate-spin" size={18} /> : "Delete All"}
                 </button>
               </div>
             </motion.div>

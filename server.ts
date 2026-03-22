@@ -247,6 +247,37 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.post("/api/photos/batch-delete", (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ error: "IDs must be an array" });
+    }
+
+    const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    const initialCount = data.photos.length;
+    
+    const photosToDelete = data.photos.filter(p => ids.includes(p.id));
+    
+    for (const photo of photosToDelete) {
+      const filePath = path.join(config.uploadsDir, photo.filename);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (e) {
+          console.error(`Failed to delete file ${filePath}`, e);
+        }
+      }
+    }
+
+    data.photos = data.photos.filter(p => !ids.includes(p.id));
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+
+    res.json({ 
+      success: true, 
+      deletedCount: initialCount - data.photos.length 
+    });
+  });
+
   // Serve uploaded files
   app.use("/uploads", (req, res, next) => {
     express.static(config.uploadsDir)(req, res, next);
