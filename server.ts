@@ -278,6 +278,28 @@ async function startServer() {
     });
   });
 
+  app.post("/api/photos/batch-tags", (req, res) => {
+    const { ids, tags } = req.body;
+    if (!Array.isArray(ids) || !Array.isArray(tags)) {
+      return res.status(400).json({ error: "IDs and tags must be arrays" });
+    }
+
+    const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    let updatedCount = 0;
+
+    data.photos = data.photos.map(photo => {
+      if (ids.includes(photo.id)) {
+        const newTags = Array.from(new Set([...photo.tags, ...tags]));
+        updatedCount++;
+        return { ...photo, tags: newTags };
+      }
+      return photo;
+    });
+
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    res.json({ success: true, updatedCount });
+  });
+
   // Serve uploaded files
   app.use("/uploads", (req, res, next) => {
     express.static(config.uploadsDir)(req, res, next);

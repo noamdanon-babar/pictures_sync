@@ -70,7 +70,10 @@ export default function App() {
   const [showProgressPanel, setShowProgressPanel] = useState(false);
   const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
+  const [showBatchTagModal, setShowBatchTagModal] = useState(false);
+  const [batchTagsInput, setBatchTagsInput] = useState("");
   const [isDeletingBatch, setIsDeletingBatch] = useState(false);
+  const [isApplyingBatchTags, setIsApplyingBatchTags] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [uploadsDir, setUploadsDir] = useState<string>("");
@@ -357,6 +360,30 @@ export default function App() {
       console.error("Batch delete failed:", error);
     } finally {
       setIsDeletingBatch(false);
+    }
+  };
+
+  const handleBatchTags = async () => {
+    if (selectedPhotoIds.length === 0 || !batchTagsInput.trim()) return;
+    setIsApplyingBatchTags(true);
+    const tags = batchTagsInput.split(",").map(t => t.trim()).filter(t => t !== "");
+    try {
+      const response = await fetch("/api/photos/batch-tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedPhotoIds, tags }),
+      });
+      if (response.ok) {
+        await fetchPhotos();
+        setSelectedPhotoIds([]);
+        setIsBatchMode(false);
+        setShowBatchTagModal(false);
+        setBatchTagsInput("");
+      }
+    } catch (error) {
+      console.error("Batch tagging failed:", error);
+    } finally {
+      setIsApplyingBatchTags(false);
     }
   };
 
@@ -968,6 +995,15 @@ export default function App() {
                   Individual
                 </button>
                 <button
+                  onClick={() => setShowBatchTagModal(true)}
+                  disabled={selectedPhotoIds.length === 0 || zipping}
+                  className="flex items-center gap-2 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 px-4 py-2 rounded-xl font-medium transition-all"
+                  title="Tag selected items"
+                >
+                  <Tag size={18} />
+                  Tag
+                </button>
+                <button
                   onClick={() => setShowBatchDeleteConfirm(true)}
                   disabled={selectedPhotoIds.length === 0 || zipping}
                   className="flex items-center gap-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 disabled:opacity-50 px-4 py-2 rounded-xl font-medium transition-all"
@@ -1152,6 +1188,60 @@ export default function App() {
                   className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {isDeletingBatch ? <Loader2 className="animate-spin" size={18} /> : "Delete All"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Batch Tag Modal */}
+      <AnimatePresence>
+        {showBatchTagModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowBatchTagModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white dark:bg-stone-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-stone-200 dark:border-stone-800"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mb-4">
+                <Tag className="text-emerald-600 dark:text-emerald-400" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">Tag {selectedPhotoIds.length} Items</h3>
+              <p className="text-stone-500 dark:text-stone-400 mb-4 text-sm">
+                Enter tags separated by commas to apply to all selected items.
+              </p>
+              <input
+                autoFocus
+                type="text"
+                value={batchTagsInput}
+                onChange={(e) => setBatchTagsInput(e.target.value)}
+                placeholder="e.g. vacation, family, 2024"
+                className="w-full px-4 py-2.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:text-stone-100 mb-6"
+                onKeyDown={(e) => e.key === "Enter" && handleBatchTags()}
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowBatchTagModal(false)}
+                  disabled={isApplyingBatchTags}
+                  className="flex-1 px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl font-medium transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBatchTags}
+                  disabled={isApplyingBatchTags || !batchTagsInput.trim()}
+                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isApplyingBatchTags ? <Loader2 className="animate-spin" size={18} /> : "Apply Tags"}
                 </button>
               </div>
             </motion.div>
