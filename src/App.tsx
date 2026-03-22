@@ -84,6 +84,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [newUploadsDir, setNewUploadsDir] = useState("");
   const [isUpdatingUploadsDir, setIsUpdatingUploadsDir] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("darkMode");
@@ -200,7 +201,9 @@ export default function App() {
       const data = await response.json();
       if (response.ok) {
         setUploadsDir(data.uploadsDir);
-        alert("Upload directory updated successfully!");
+        // Automatically scan the new folder
+        await handleScanFolder();
+        alert("Upload directory updated and scanned successfully!");
       } else {
         alert(`Failed to update: ${data.error}`);
       }
@@ -221,6 +224,31 @@ export default function App() {
       console.error("Failed to fetch photos:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleScanFolder = async () => {
+    setIsScanning(true);
+    try {
+      const response = await fetch("/api/scan", {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (data.count > 0) {
+          await fetchPhotos();
+          alert(`Scan complete! Found and imported ${data.count} new items.`);
+        } else {
+          alert("Scan complete! No new items found.");
+        }
+      } else {
+        alert(`Scan failed: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Failed to scan folder:", error);
+      alert("An error occurred while scanning the folder.");
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -707,6 +735,15 @@ export default function App() {
                         className="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
                       >
                         {isUpdatingUploadsDir ? "Updating..." : "Update"}
+                      </button>
+                      <button
+                        onClick={handleScanFolder}
+                        disabled={isScanning}
+                        className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+                        title="Scan current folder for new media"
+                      >
+                        {isScanning ? <Loader2 className="animate-spin" size={16} /> : <Search size={16} />}
+                        Scan
                       </button>
                     </div>
                     <p className="text-[10px] text-stone-400 dark:text-stone-500 mt-2 italic">

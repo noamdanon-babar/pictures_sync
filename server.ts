@@ -111,6 +111,50 @@ async function startServer() {
     }
   });
 
+  app.post("/api/scan", (req, res) => {
+    try {
+      const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+      const existingFilenames = new Set(data.photos.map(p => p.filename));
+      const files = fs.readdirSync(config.uploadsDir);
+      
+      const newPhotos: Photo[] = [];
+      const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg"];
+      const videoExtensions = [".mp4", ".mov", ".webm", ".avi", ".mkv"];
+
+      for (const file of files) {
+        if (existingFilenames.has(file)) continue;
+
+        const ext = path.extname(file).toLowerCase();
+        const isImage = imageExtensions.includes(ext);
+        const isVideo = videoExtensions.includes(ext);
+
+        if (isImage || isVideo) {
+          const stats = fs.statSync(path.join(config.uploadsDir, file));
+          if (stats.isFile()) {
+            newPhotos.push({
+              id: uuidv4(),
+              filename: file,
+              originalName: file,
+              tags: ["imported"],
+              uploadDate: stats.mtime.toISOString(),
+              type: isVideo ? "video" : "image"
+            });
+          }
+        }
+      }
+
+      if (newPhotos.length > 0) {
+        data.photos.push(...newPhotos);
+        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+      }
+
+      res.json({ success: true, count: newPhotos.length, photos: newPhotos });
+    } catch (error) {
+      console.error("Failed to scan directory:", error);
+      res.status(500).json({ error: "Failed to scan directory" });
+    }
+  });
+
   app.get("/api/photos", (req, res) => {
     const data: Data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
     res.json(data.photos);
