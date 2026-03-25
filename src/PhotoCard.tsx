@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Tag, Loader2, Download, Maximize2, Check, FolderCheck, Trash2, X, Plus, Edit2 } from "lucide-react";
+import { Tag, Loader2, Download, Maximize2, Check, FolderCheck, Trash2, X, Plus, Edit2, MoreVertical } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Photo } from "./App";
 
@@ -130,7 +130,10 @@ export default function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onR
           : "border-stone-200 shadow-sm hover:shadow-md"
       } ${viewMode === "list" ? "flex flex-row h-20" : "flex flex-col"}`}
     >
-      <div className={`${viewMode === "list" ? "w-20 h-full" : "aspect-square"} relative overflow-hidden bg-stone-100 shrink-0`}>
+      <div 
+        onClick={(e) => { if (!isBatchMode) { e.stopPropagation(); onView(); } }}
+        className={`${viewMode === "list" ? "w-20 h-full" : "aspect-square"} relative overflow-hidden bg-stone-100 shrink-0`}
+      >
         {isVideo(photo.filename) ? (
           <video
             src={`/uploads/${photo.filename}`}
@@ -157,50 +160,10 @@ export default function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onR
             </div>
           </div>
         )}
-
-        {!isBatchMode && (
-          <div className={`absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ${(viewMode === "list" || viewMode === "sm") ? "gap-2" : "gap-3"}`}>
-            <button
-              onClick={(e) => { e.stopPropagation(); onView(); }}
-              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
-              title="View Full Size"
-            >
-              <Maximize2 size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
-            </button>
-            <button
-              onClick={handleDownload}
-              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
-              title={directoryHandle ? `Save to ${directoryHandle.name}` : "Download (Choose location)"}
-            >
-              {downloading ? <Loader2 className="animate-spin" size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} /> : <Download size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />}
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
-              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
-              title="Edit Tags"
-            >
-              <Tag size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onMove(); }}
-              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
-              title="Move to Folder"
-            >
-              <FolderCheck size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-red-500/20 backdrop-blur-md rounded-full text-white hover:bg-red-500/40 transition-colors`}
-              title="Delete Photo"
-            >
-              <Trash2 size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
-            </button>
-          </div>
-        )}
       </div>
 
       <div className={`${viewMode === "list" ? "p-3" : "p-4"} flex-1 flex flex-col justify-between ${viewMode === "list" ? "min-w-0" : ""}`}>
-        <div className="flex justify-between items-start gap-4">
+        <div className="flex justify-between items-start gap-2">
           <div className="min-w-0 flex-1">
             {isRenaming ? (
               <form onSubmit={handleRenameSubmit} className="mb-1">
@@ -258,37 +221,17 @@ export default function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onR
             </div>
           </div>
 
-          {viewMode === "list" && !isBatchMode && (
-            <div className="flex items-center gap-0.5 shrink-0">
-              <button
-                onClick={(e) => { e.stopPropagation(); onView(); }}
-                className="p-1.5 text-stone-400 hover:text-stone-900 transition-colors"
-                title="View"
-              >
-                <Maximize2 size={16} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setIsEditingTags(!isEditingTags); }}
-                className="p-1.5 text-stone-400 hover:text-stone-900 transition-colors"
-                title="Tags"
-              >
-                <Tag size={16} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onMove(); }}
-                className="p-1.5 text-stone-400 hover:text-stone-900 transition-colors"
-                title="Move"
-              >
-                <FolderCheck size={16} />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                className="p-1.5 text-stone-400 hover:text-red-500 transition-colors"
-                title="Delete"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
+          {!isBatchMode && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleContextMenu(e);
+              }}
+              className="p-1 text-stone-400 hover:text-stone-900 hover:bg-stone-100 rounded-lg transition-all shrink-0"
+              title="More options"
+            >
+              <MoreVertical size={18} />
+            </button>
           )}
         </div>
         
