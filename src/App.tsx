@@ -1705,11 +1705,11 @@ function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onRename, onView, 
       onClick={() => isBatchMode && onSelect()}
       className={`group bg-white dark:bg-stone-900 rounded-2xl overflow-hidden border transition-all cursor-pointer ${
         isSelected 
-          ? "border-emerald-500 ring-2 ring-emerald-500/20 shadow-lg" 
-          : "border-stone-200 dark:border-stone-800 shadow-sm hover:shadow-md"
+          ? "border-emerald-500 ring-2 ring-emerald-500/20 shadow-lg"
+          : "border-stone-200 shadow-sm hover:shadow-md"
       } ${viewMode === "list" ? "flex flex-row h-20" : "flex flex-col"}`}
     >
-      <div className={`${viewMode === "list" ? "w-20 h-full" : "aspect-square"} relative overflow-hidden bg-stone-100 dark:bg-stone-800 shrink-0`}>
+      <div className={`${viewMode === "list" ? "w-20 h-full" : "aspect-square"} relative overflow-hidden bg-stone-100 shrink-0`}>
         {isVideo(photo.filename) ? (
           <video
             src={`/uploads/${photo.filename}`}
