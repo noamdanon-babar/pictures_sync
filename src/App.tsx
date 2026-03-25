@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc, CheckCircle2, AlertCircle, Monitor, Palette } from "lucide-react";
+import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc, CheckCircle2, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import JSZip from "jszip";
 import { v4 as uuidv4 } from "uuid";
@@ -104,48 +104,7 @@ export default function App() {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [showMoveToFolderModal, setShowMoveToFolderModal] = useState(false);
   const [isMovingPhotos, setIsMovingPhotos] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("theme") as any) || "system";
-    }
-    return "system";
-  });
-  const [accentColor, setAccentColor] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("accentColor") || "emerald";
-    }
-    return "emerald";
-  });
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    const body = window.document.body;
-    const applyTheme = (isDark: boolean) => {
-      if (isDark) {
-        root.classList.add("dark");
-        body.classList.add("dark");
-      } else {
-        root.classList.remove("dark");
-        body.classList.remove("dark");
-      }
-    };
-
-    if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      applyTheme(mediaQuery.matches);
-      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
-      mediaQuery.addEventListener("change", handler);
-      return () => mediaQuery.removeEventListener("change", handler);
-    } else {
-      applyTheme(theme === "dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem("accentColor", accentColor);
-  }, [accentColor]);
 
   useEffect(() => {
     fetchPhotos();
@@ -784,46 +743,29 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans transition-colors duration-300">
+    <div className="min-h-screen bg-stone-50 text-stone-900 font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md border-b border-stone-200 dark:border-stone-800">
+      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-stone-200">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
-              <ImageIcon className="text-emerald-600 dark:text-emerald-400" size={24} />
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <ImageIcon className="text-emerald-600" size={24} />
             </div>
             <h1 className="text-xl font-semibold tracking-tight">MediaSync</h1>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="hidden lg:flex items-center gap-2 text-stone-400 dark:text-stone-500 text-xs bg-stone-100 dark:bg-stone-800 px-3 py-1.5 rounded-lg" title={`Saving to: ${uploadsDir}`}>
+            <div className="hidden lg:flex items-center gap-2 text-stone-400 text-xs bg-stone-100 px-3 py-1.5 rounded-lg" title={`Saving to: ${uploadsDir}`}>
               <Info size={14} />
               <span className="max-w-[150px] truncate">Storage: {uploadsDir}</span>
-            </div>
-
-            <div className="flex bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl overflow-hidden p-0.5">
-              {[
-                { id: 'light', icon: Sun, title: 'Light Mode' },
-                { id: 'dark', icon: Moon, title: 'Dark Mode' },
-                { id: 'system', icon: Monitor, title: 'System Default' }
-              ].map(({ id, icon: Icon, title }) => (
-                <button
-                  key={id}
-                  onClick={() => setTheme(id as any)}
-                  className={`p-1.5 rounded-lg transition-all ${theme === id ? "bg-stone-100 dark:bg-stone-700 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"}`}
-                  title={title}
-                >
-                  <Icon size={18} />
-                </button>
-              ))}
             </div>
             
             <button
               onClick={() => setShowSettings(!showSettings)}
               className={`p-2 rounded-xl transition-all ${
                 showSettings 
-                  ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900" 
-                  : "bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100"
+                  ? "bg-stone-900 text-white" 
+                  : "bg-white border border-stone-200 text-stone-600 hover:border-stone-900"
               }`}
               title="Settings"
             >
@@ -837,8 +779,8 @@ export default function App() {
               }}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
                 isBatchMode 
-                  ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900" 
-                  : "bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100"
+                  ? "bg-stone-900 text-white" 
+                  : "bg-white border border-stone-200 text-stone-600 hover:border-stone-900"
               }`}
             >
               {isBatchMode ? <X size={20} /> : <CheckSquare size={20} />}
@@ -848,7 +790,7 @@ export default function App() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className={`flex items-center gap-2 bg-${accentColor}-600 hover:bg-${accentColor}-700 text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50`}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
             >
               {uploading ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
               <span className="hidden sm:inline">{uploading ? "Uploading..." : "Upload Media"}</span>
@@ -871,17 +813,17 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl flex items-center justify-between gap-4"
+            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-between gap-4"
           >
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+            <div className="flex items-center gap-3 text-red-600">
               <Info size={20} />
               <p className="font-medium">{uploadError}</p>
             </div>
             <button 
               onClick={() => setUploadError(null)}
-              className="p-1 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
+              className="p-1 hover:bg-red-100 rounded-lg transition-colors"
             >
-              <X size={18} className="text-red-600 dark:text-red-400" />
+              <X size={18} className="text-red-600" />
             </button>
           </motion.div>
         )}
@@ -895,66 +837,25 @@ export default function App() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden mb-8"
             >
-              <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm">
+              <div className="bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold flex items-center gap-2 dark:text-stone-100">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
                     <Settings size={20} className="text-stone-400" />
                     Application Settings
                   </h2>
-                  <button onClick={() => setShowSettings(false)} className="text-stone-400 hover:text-stone-900 dark:hover:text-stone-100">
+                  <button onClick={() => setShowSettings(false)} className="text-stone-400 hover:text-stone-900">
                     <X size={20} />
                   </button>
                 </div>
 
                 <div className="space-y-6">
-                  <div className="flex flex-col gap-4 p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                          <Palette size={18} className={`text-${accentColor}-600`} />
-                          Theme & Appearance
-                        </h3>
-                        <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-                          Choose your preferred mode and accent color.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-4 items-center">
-                      <div className="flex bg-white dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-700">
-                        {[
-                          { id: 'light', label: 'Light' },
-                          { id: 'dark', label: 'Dark' },
-                          { id: 'system', label: 'System' }
-                        ].map(({ id, label }) => (
-                          <button
-                            key={id}
-                            onClick={() => setTheme(id as any)}
-                            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${theme === id ? `bg-${accentColor}-600 text-white` : "text-stone-500 hover:text-stone-900 dark:hover:text-stone-100"}`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex gap-2">
-                        {['emerald', 'blue', 'indigo', 'rose', 'amber'].map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setAccentColor(color)}
-                            className={`w-8 h-8 rounded-full border-2 transition-transform ${accentColor === color ? "border-stone-900 dark:border-white scale-110 shadow-lg" : "border-transparent hover:scale-105"}`}
-                            style={{ backgroundColor: color === 'emerald' ? '#10b981' : color === 'blue' ? '#3b82f6' : color === 'indigo' ? '#6366f1' : color === 'rose' ? '#f43f5e' : '#f59e0b' }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-stone-50 rounded-2xl border border-stone-100">
                     <div>
-                      <h3 className="font-medium text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                      <h3 className="font-medium text-stone-900 flex items-center gap-2">
                         <Folder size={18} className="text-emerald-600" />
                         Default Download Folder
                       </h3>
-                      <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                      <p className="text-sm text-stone-500 mt-1">
                         {directoryHandle 
                           ? `Currently saving to: ${directoryHandle.name}` 
                           : "Choose a folder to save photos directly without prompts."}
@@ -971,20 +872,20 @@ export default function App() {
                           {dirPermissionStatus !== "granted" && (
                             <button
                               onClick={requestDirPermission}
-                              className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50 rounded-xl text-sm font-medium transition-colors"
+                              className="px-4 py-2 bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-xl text-sm font-medium transition-colors"
                             >
                               Grant Permission
                             </button>
                           )}
                           <button
                             onClick={handleSelectDirectory}
-                            className="px-4 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100 rounded-xl text-sm font-medium transition-colors"
+                            className="px-4 py-2 bg-white border border-stone-200 text-stone-600 hover:border-stone-900 rounded-xl text-sm font-medium transition-colors"
                           >
                             Change Folder
                           </button>
                           <button
                             onClick={clearDirectory}
-                            className="px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-sm font-medium transition-colors"
+                            className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-xl text-sm font-medium transition-colors"
                           >
                             Clear
                           </button>
@@ -1001,12 +902,12 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
-                    <h3 className="font-medium text-stone-900 dark:text-stone-100 flex items-center gap-2 mb-2">
+                  <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                    <h3 className="font-medium text-stone-900 flex items-center gap-2 mb-2">
                       <Upload size={18} className="text-emerald-600" />
                       Server Upload Directory
                     </h3>
-                    <p className="text-sm text-stone-500 dark:text-stone-400 mb-4">
+                    <p className="text-sm text-stone-500 mb-4">
                       The folder on your computer where the app stores uploaded photos.
                     </p>
                     <div className="flex gap-2">
@@ -1015,19 +916,19 @@ export default function App() {
                         value={newUploadsDir}
                         onChange={(e) => setNewUploadsDir(e.target.value)}
                         placeholder="e.g. C:\Photos or /Users/me/photos"
-                        className="flex-1 px-4 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:text-stone-100"
+                        className="flex-1 px-4 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                       />
                       <button
                         onClick={handleUpdateUploadsDir}
                         disabled={isUpdatingUploadsDir || newUploadsDir === uploadsDir}
-                        className="px-4 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-200 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+                        className="px-4 py-2 bg-stone-900 text-white hover:bg-stone-800 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
                       >
                         {isUpdatingUploadsDir ? "Updating..." : "Update"}
                       </button>
                       <button
                         onClick={handleResetUploadsDir}
                         disabled={isUpdatingUploadsDir}
-                        className="px-4 py-2 bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-300 dark:hover:bg-stone-700 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
+                        className="px-4 py-2 bg-stone-200 text-stone-600 hover:bg-stone-300 disabled:opacity-50 rounded-xl text-sm font-medium transition-colors"
                         title="Reset to default storage/uploads"
                       >
                         Reset
@@ -1070,7 +971,7 @@ export default function App() {
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all shrink-0 ${
               currentFolderId === null
                 ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                : "bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:border-emerald-500"
+                : "bg-white border border-stone-200 text-stone-600 hover:border-emerald-500"
             }`}
           >
             <ImageIcon size={16} />
@@ -1084,7 +985,7 @@ export default function App() {
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   currentFolderId === folder.id
                     ? "bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                    : "bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:border-emerald-500"
+                    : "bg-white border border-stone-200 text-stone-600 hover:border-emerald-500"
                 }`}
               >
                 <Folder size={16} />
@@ -1103,7 +1004,7 @@ export default function App() {
 
           <button
             onClick={() => setShowNewFolderModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-dashed border-stone-300 dark:border-stone-700 text-stone-500 dark:text-stone-400 hover:border-emerald-500 hover:text-emerald-600 transition-all shrink-0"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-dashed border-stone-300 text-stone-500 hover:border-emerald-500 hover:text-emerald-600 transition-all shrink-0"
           >
             <Plus size={16} />
             New Folder
@@ -1114,13 +1015,13 @@ export default function App() {
         <div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
           <div className="flex-1 w-full space-y-3">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500" size={18} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={18} />
               <input
                 type="text"
                 placeholder="Search by name or tag..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:text-stone-100 transition-all text-sm"
+                className="w-full pl-11 pr-4 py-2.5 bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
               />
             </div>
 
@@ -1133,7 +1034,7 @@ export default function App() {
                     className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
                       selectedTags.includes(tag)
                         ? "bg-emerald-600 text-white"
-                        : "bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:border-emerald-500"
+                        : "bg-white border border-stone-200 text-stone-600 hover:border-emerald-500"
                     }`}
                   >
                     {tag}
@@ -1143,33 +1044,33 @@ export default function App() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-1.5 rounded-2xl shrink-0 self-end md:self-center">
+          <div className="flex items-center gap-2 bg-white border border-stone-200 p-1.5 rounded-2xl shrink-0 self-end md:self-center">
             {gridSize === "list" && (
-              <div className="flex items-center gap-1 pr-2 mr-2 border-r border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-1 pr-2 mr-2 border-r border-stone-200">
                 <button
                   onClick={() => setSortBy("name")}
-                  className={`p-2 rounded-xl transition-all ${sortBy === "name" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+                  className={`p-2 rounded-xl transition-all ${sortBy === "name" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
                   title="Sort by Name"
                 >
                   <ArrowUpAZ size={18} />
                 </button>
                 <button
                   onClick={() => setSortBy("date")}
-                  className={`p-2 rounded-xl transition-all ${sortBy === "date" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+                  className={`p-2 rounded-xl transition-all ${sortBy === "date" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
                   title="Sort by Date"
                 >
                   <Calendar size={18} />
                 </button>
                 <button
                   onClick={() => setSortBy("tag")}
-                  className={`p-2 rounded-xl transition-all ${sortBy === "tag" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+                  className={`p-2 rounded-xl transition-all ${sortBy === "tag" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
                   title="Sort by Tag"
                 >
                   <Hash size={18} />
                 </button>
                 <button
                   onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                  className="p-2 rounded-xl text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all"
+                  className="p-2 rounded-xl text-emerald-600 hover:bg-emerald-50 transition-all"
                   title={sortOrder === "asc" ? "Ascending" : "Descending"}
                 >
                   {sortOrder === "asc" ? <SortAsc size={18} /> : <SortDesc size={18} />}
@@ -1178,28 +1079,28 @@ export default function App() {
             )}
             <button
               onClick={() => setGridSize("lg")}
-              className={`p-1.5 rounded-lg transition-all ${gridSize === "lg" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-1.5 rounded-lg transition-all ${gridSize === "lg" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
               title="Large Grid"
             >
               <Grid2X2 size={18} />
             </button>
             <button
               onClick={() => setGridSize("md")}
-              className={`p-1.5 rounded-lg transition-all ${gridSize === "md" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-1.5 rounded-lg transition-all ${gridSize === "md" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
               title="Medium Grid"
             >
               <Grid3X3 size={18} />
             </button>
             <button
               onClick={() => setGridSize("sm")}
-              className={`p-1.5 rounded-lg transition-all ${gridSize === "sm" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-1.5 rounded-lg transition-all ${gridSize === "sm" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
               title="Small Grid"
             >
               <LayoutGrid size={18} />
             </button>
             <button
               onClick={() => setGridSize("list")}
-              className={`p-1.5 rounded-lg transition-all ${gridSize === "list" ? "bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600"}`}
+              className={`p-1.5 rounded-lg transition-all ${gridSize === "list" ? "bg-stone-100 text-stone-900" : "text-stone-400 hover:text-stone-600"}`}
               title="List View"
             >
               <List size={18} />
@@ -1209,17 +1110,17 @@ export default function App() {
 
         {/* Photo Grid */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-stone-400 dark:text-stone-600">
+          <div className="flex flex-col items-center justify-center py-20 text-stone-400">
             <Loader2 className="animate-spin mb-4" size={40} />
             <p>Loading your gallery...</p>
           </div>
         ) : filteredPhotos.length === 0 ? (
-          <div className="text-center py-20 bg-white dark:bg-stone-900 rounded-3xl border border-dashed border-stone-200 dark:border-stone-800">
-            <div className="w-16 h-16 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-400 dark:text-stone-600">
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-stone-200">
+            <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-4 text-stone-400">
               <ImageIcon size={32} />
             </div>
-            <h3 className="text-lg font-medium text-stone-900 dark:text-stone-100">No photos found</h3>
-            <p className="text-stone-500 dark:text-stone-400">Try uploading some photos or adjusting your search.</p>
+            <h3 className="text-lg font-medium text-stone-900">No photos found</h3>
+            <p className="text-stone-500">Try uploading some photos or adjusting your search.</p>
           </div>
         ) : (
           <div className={`grid gap-6 ${
@@ -1477,21 +1378,21 @@ export default function App() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-stone-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-stone-200 dark:border-stone-800"
+              className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-stone-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center mb-4">
-                <Trash2 className="text-red-600 dark:text-red-400" size={24} />
+              <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mb-4">
+                <Trash2 className="text-red-600" size={24} />
               </div>
-              <h3 className="text-xl font-bold text-stone-900 dark:text-stone-100 mb-2">Delete {selectedPhotoIds.length} Items?</h3>
-              <p className="text-stone-500 dark:text-stone-400 mb-6">
+              <h3 className="text-xl font-bold text-stone-900 mb-2">Delete {selectedPhotoIds.length} Items?</h3>
+              <p className="text-stone-500 mb-6">
                 Are you sure you want to delete these {selectedPhotoIds.length} files? This action cannot be undone.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowBatchDeleteConfirm(false)}
                   disabled={isDeletingBatch}
-                  className="flex-1 px-4 py-2 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl font-medium transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-stone-100 text-stone-600 hover:bg-stone-200 rounded-xl font-medium transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1570,13 +1471,13 @@ export default function App() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white dark:bg-stone-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-stone-100 dark:border-stone-800"
+                className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-stone-100"
               >
-                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 text-emerald-600 mx-auto">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-6 text-emerald-600 mx-auto">
                   <Folder size={32} />
                 </div>
-                <h3 className="text-2xl font-bold text-stone-900 dark:text-stone-100 text-center mb-2">New Folder</h3>
-                <p className="text-stone-500 dark:text-stone-400 text-center mb-6">Enter a name for your new folder.</p>
+                <h3 className="text-2xl font-bold text-stone-900 text-center mb-2">New Folder</h3>
+                <p className="text-stone-500 text-center mb-6">Enter a name for your new folder.</p>
                 
                 <input
                   type="text"
@@ -1585,13 +1486,13 @@ export default function App() {
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
-                  className="w-full px-4 py-3 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl mb-6 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:text-stone-100"
+                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-2xl mb-6 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
 
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowNewFolderModal(false)}
-                    className="flex-1 px-6 py-3 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-semibold rounded-2xl hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                    className="flex-1 px-6 py-3 bg-stone-100 text-stone-600 font-semibold rounded-2xl hover:bg-stone-200 transition-colors"
                   >
                     Cancel
                   </button>
@@ -1616,24 +1517,24 @@ export default function App() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white dark:bg-stone-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-stone-100 dark:border-stone-800"
+                className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-stone-100"
               >
-                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-6 text-blue-600 mx-auto">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6 text-blue-600 mx-auto">
                   <FolderCheck size={32} />
                 </div>
-                <h3 className="text-2xl font-bold text-stone-900 dark:text-stone-100 text-center mb-2">Move {selectedPhotoIds.length} items</h3>
-                <p className="text-stone-500 dark:text-stone-400 text-center mb-6">Select a destination folder.</p>
+                <h3 className="text-2xl font-bold text-stone-900 text-center mb-2">Move {selectedPhotoIds.length} items</h3>
+                <p className="text-stone-500 text-center mb-6">Select a destination folder.</p>
                 
                 <div className="max-h-60 overflow-y-auto space-y-2 mb-6 pr-2 custom-scrollbar">
                   <button
                     onClick={() => handleMovePhotos(null)}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left group"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-stone-100 transition-colors text-left group"
                   >
-                    <div className="w-10 h-10 bg-stone-100 dark:bg-stone-800 rounded-xl flex items-center justify-center text-stone-400 group-hover:bg-white dark:group-hover:bg-stone-700">
+                    <div className="w-10 h-10 bg-stone-100 rounded-xl flex items-center justify-center text-stone-400 group-hover:bg-white">
                       <ImageIcon size={20} />
                     </div>
                     <div>
-                      <p className="font-medium text-stone-900 dark:text-stone-100">Root Gallery</p>
+                      <p className="font-medium text-stone-900">Root Gallery</p>
                       <p className="text-xs text-stone-500">Main collection</p>
                     </div>
                   </button>
@@ -1642,13 +1543,13 @@ export default function App() {
                     <button
                       key={folder.id}
                       onClick={() => handleMovePhotos(folder.id)}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors text-left group"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-stone-100 transition-colors text-left group"
                     >
-                      <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-white dark:group-hover:bg-stone-700">
+                      <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-white">
                         <Folder size={20} />
                       </div>
                       <div>
-                        <p className="font-medium text-stone-900 dark:text-stone-100">{folder.name}</p>
+                        <p className="font-medium text-stone-900">{folder.name}</p>
                         <p className="text-xs text-stone-500">Folder</p>
                       </div>
                     </button>
@@ -1658,7 +1559,7 @@ export default function App() {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowMoveToFolderModal(false)}
-                    className="flex-1 px-6 py-3 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-semibold rounded-2xl hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                    className="flex-1 px-6 py-3 bg-stone-100 text-stone-600 font-semibold rounded-2xl hover:bg-stone-200 transition-colors"
                   >
                     Cancel
                   </button>
@@ -1673,23 +1574,23 @@ export default function App() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-8 right-8 z-50 w-80 max-h-[400px] flex flex-col bg-white dark:bg-stone-900 rounded-3xl shadow-2xl border border-stone-200 dark:border-stone-800 overflow-hidden"
+            className="fixed bottom-8 right-8 z-50 w-80 max-h-[400px] flex flex-col bg-white rounded-3xl shadow-2xl border border-stone-200 overflow-hidden"
           >
-            <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-800/50">
-              <h3 className="font-semibold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+            <div className="p-4 border-b border-stone-100 flex items-center justify-between bg-stone-50">
+              <h3 className="font-semibold text-stone-900 flex items-center gap-2">
                 <Upload size={18} className="text-emerald-600" />
                 Uploads
               </h3>
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setUploadTasks([])}
-                  className="text-xs text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 font-medium"
+                  className="text-xs text-stone-400 hover:text-stone-600 font-medium"
                 >
                   Clear
                 </button>
                 <button 
                   onClick={() => setShowProgressPanel(false)}
-                  className="p-1 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-lg transition-colors"
+                  className="p-1 hover:bg-stone-200 rounded-lg transition-colors"
                 >
                   <X size={18} className="text-stone-400" />
                 </button>
@@ -1699,7 +1600,6 @@ export default function App() {
               {uploadTasks.map(task => (
                 <div key={task.id} className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium text-stone-700 dark:text-stone-300 truncate flex-1">
                       {task.fileName}
                     </p>
                     <div className="shrink-0">
