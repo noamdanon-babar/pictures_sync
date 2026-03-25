@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { Tag, Loader2, Download, Maximize2, Check, FolderCheck, Trash2, X, Plus } from "lucide-react";
-import { motion } from "motion/react";
+import React, { useState, useEffect } from "react";
+import { Tag, Loader2, Download, Maximize2, Check, FolderCheck, Trash2, X, Plus, Edit2 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { Photo } from "./App";
 
 interface PhotoCardProps {
@@ -26,6 +26,24 @@ export default function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onR
   const [newName, setNewName] = useState(photo.originalName);
   const [newTag, setNewTag] = useState("");
   const [downloading, setDownloading] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  useEffect(() => {
+    const closeMenu = () => setContextMenu(null);
+    if (contextMenu) {
+      window.addEventListener("click", closeMenu);
+      window.addEventListener("scroll", closeMenu, true);
+    }
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("scroll", closeMenu, true);
+    };
+  }, [contextMenu]);
 
   const isVideo = (filename: string) => {
     const ext = filename.split(".").pop()?.toLowerCase();
@@ -58,6 +76,7 @@ export default function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onR
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       onClick={() => isBatchMode && onSelect()}
+      onContextMenu={handleContextMenu}
       className={`group bg-white rounded-2xl overflow-hidden border transition-all cursor-pointer ${
         isSelected 
           ? "border-emerald-500 ring-2 ring-emerald-500/20 shadow-lg"
@@ -102,52 +121,7 @@ export default function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onR
               <Maximize2 size={(viewMode === "list" || viewMode === "sm") ? 16 : 20} />
             </button>
             <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                setDownloading(true);
-                try {
-                  const response = await fetch(`/uploads/${photo.filename}`);
-                  const blob = await response.blob();
-                  
-                  let saved = false;
-                  if (directoryHandle) {
-                    saved = await saveFileToDirectory(photo.originalName, blob);
-                  }
-
-                  if (!saved) {
-                    if ("showSaveFilePicker" in window) {
-                      try {
-                        const handle = await (window as any).showSaveFilePicker({
-                          suggestedName: photo.originalName,
-                          types: [{
-                            description: "Media File",
-                            accept: { [blob.type]: [`.${photo.filename.split(".").pop()}`] },
-                          }],
-                        });
-                        const writable = await handle.createWritable();
-                        await writable.write(blob);
-                        await writable.close();
-                        saved = true;
-                      } catch (err) {
-                        if ((err as Error).name !== "AbortError") console.error(err);
-                      }
-                    }
-                  }
-
-                  if (!saved) {
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.download = photo.originalName;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                  }
-                } finally {
-                  setDownloading(false);
-                }
-              }}
+              onClick={handleDownload}
               className={`${(viewMode === "list" || viewMode === "sm") ? "p-2" : "p-3"} bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors`}
               title={directoryHandle ? `Save to ${directoryHandle.name}` : "Download (Choose location)"}
             >
