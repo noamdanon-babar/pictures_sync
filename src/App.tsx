@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, Tag, Trash2, Plus, X, Search, Image as ImageIcon, Loader2, Info, Download, Maximize2, CheckSquare, Square, Check, LayoutGrid, Grid3X3, Grid2X2, Files, Settings, Folder, FolderCheck, Moon, Sun, List, ArrowUpDown, ArrowUpAZ, ArrowDownAZ, Calendar, Hash, SortAsc, SortDesc, CheckCircle2, AlertCircle, Monitor, Palette } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import JSZip from "jszip";
 import { v4 as uuidv4 } from "uuid";
@@ -104,31 +104,48 @@ export default function App() {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [showMoveToFolderModal, setShowMoveToFolderModal] = useState(false);
   const [isMovingPhotos, setIsMovingPhotos] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => {
+  const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("darkMode");
-      return saved ? JSON.parse(saved) : window.matchMedia("(prefers-color-scheme: dark)").matches;
+      return (localStorage.getItem("theme") as any) || "system";
     }
-    return false;
+    return "system";
+  });
+  const [accentColor, setAccentColor] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("accentColor") || "emerald";
+    }
+    return "emerald";
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
     const body = window.document.body;
-    if (isDarkMode) {
-      root.classList.add("dark");
-      body.classList.add("dark");
+    const applyTheme = (isDark: boolean) => {
+      if (isDark) {
+        root.classList.add("dark");
+        body.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+        body.classList.remove("dark");
+      }
+    };
+
+    if (theme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      applyTheme(mediaQuery.matches);
+      const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
+      mediaQuery.addEventListener("change", handler);
+      return () => mediaQuery.removeEventListener("change", handler);
     } else {
-      root.classList.remove("dark");
-      body.classList.remove("dark");
+      applyTheme(theme === "dark");
     }
-    try {
-      localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
-    } catch (e) {
-      console.error("Failed to save dark mode preference", e);
-    }
-  }, [isDarkMode]);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("accentColor", accentColor);
+  }, [accentColor]);
 
   useEffect(() => {
     fetchPhotos();
@@ -784,13 +801,22 @@ export default function App() {
               <span className="max-w-[150px] truncate">Storage: {uploadsDir}</span>
             </div>
 
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100 rounded-xl transition-all"
-              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+            <div className="flex bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl overflow-hidden p-0.5">
+              {[
+                { id: 'light', icon: Sun, title: 'Light Mode' },
+                { id: 'dark', icon: Moon, title: 'Dark Mode' },
+                { id: 'system', icon: Monitor, title: 'System Default' }
+              ].map(({ id, icon: Icon, title }) => (
+                <button
+                  key={id}
+                  onClick={() => setTheme(id as any)}
+                  className={`p-1.5 rounded-lg transition-all ${theme === id ? "bg-stone-100 dark:bg-stone-700 text-stone-900 dark:text-stone-100" : "text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"}`}
+                  title={title}
+                >
+                  <Icon size={18} />
+                </button>
+              ))}
+            </div>
             
             <button
               onClick={() => setShowSettings(!showSettings)}
@@ -822,7 +848,7 @@ export default function App() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              className={`flex items-center gap-2 bg-${accentColor}-600 hover:bg-${accentColor}-700 text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50`}
             >
               {uploading ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
               <span className="hidden sm:inline">{uploading ? "Uploading..." : "Upload Media"}</span>
@@ -881,23 +907,45 @@ export default function App() {
                 </div>
 
                 <div className="space-y-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
-                    <div>
-                      <h3 className="font-medium text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                        <Moon size={18} className="text-emerald-600" />
-                        Appearance
-                      </h3>
-                      <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-                        Choose between light and dark mode.
-                      </p>
+                  <div className="flex flex-col gap-4 p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                          <Palette size={18} className={`text-${accentColor}-600`} />
+                          Theme & Appearance
+                        </h3>
+                        <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
+                          Choose your preferred mode and accent color.
+                        </p>
+                      </div>
                     </div>
-                    <button
-                      onClick={() => setIsDarkMode(!isDarkMode)}
-                      className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-900 dark:hover:border-stone-100 rounded-xl text-sm font-medium transition-all"
-                    >
-                      {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                      {isDarkMode ? "Switch to Light" : "Switch to Dark"}
-                    </button>
+                    <div className="flex flex-wrap gap-4 items-center">
+                      <div className="flex bg-white dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-700">
+                        {[
+                          { id: 'light', label: 'Light' },
+                          { id: 'dark', label: 'Dark' },
+                          { id: 'system', label: 'System' }
+                        ].map(({ id, label }) => (
+                          <button
+                            key={id}
+                            onClick={() => setTheme(id as any)}
+                            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${theme === id ? `bg-${accentColor}-600 text-white` : "text-stone-500 hover:text-stone-900 dark:hover:text-stone-100"}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        {['emerald', 'blue', 'indigo', 'rose', 'amber'].map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => setAccentColor(color)}
+                            className={`w-8 h-8 rounded-full border-2 transition-transform ${accentColor === color ? "border-stone-900 dark:border-white scale-110 shadow-lg" : "border-transparent hover:scale-105"}`}
+                            style={{ backgroundColor: color === 'emerald' ? '#10b981' : color === 'blue' ? '#3b82f6' : color === 'indigo' ? '#6366f1' : color === 'rose' ? '#f43f5e' : '#f59e0b' }}
+                          />
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-800">
