@@ -1600,8 +1600,53 @@ export default function App() {
               {uploadTasks.map(task => (
                 <div key={task.id} className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-stone-700 truncate">
                       {task.fileName}
                     </p>
+                    <div className="shrink-0">
+                      {task.status === 'uploading' && (
+                        <span className="text-[10px] font-bold text-emerald-600">{task.progress}%</span>
+                      )}
+                      {task.status === 'completed' && (
+                        <CheckCircle2 size={16} className="text-emerald-600" />
+                      )}
+                      {task.status === 'error' && (
+                        <AlertCircle size={16} className="text-red-500" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-full bg-stone-100 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${task.progress}%` }}
+                      className={`h-full transition-all duration-300 ${
+                        task.status === 'error' ? 'bg-red-500' : 'bg-emerald-600'
+                      }`}
+                    />
+                  </div>
+                  {task.error && (
+                    <p className="text-[10px] text-red-500 font-medium truncate">
+                      {task.error}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!showProgressPanel && uploadTasks.some(t => t.status === 'uploading') && (
+        <button 
+          onClick={() => setShowProgressPanel(true)}
+          className="fixed bottom-8 right-8 z-50 bg-emerald-600 text-white p-4 rounded-full shadow-xl hover:bg-emerald-700 transition-all animate-bounce"
+        >
+          <Upload size={24} />
+        </button>
+      )}
+    </div>
+  );
+}
                     <div className="shrink-0">
                       {task.status === 'uploading' && (
                         <span className="text-[10px] font-bold text-emerald-600">{task.progress}%</span>
