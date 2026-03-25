@@ -69,6 +69,53 @@ export default function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onR
     setIsRenaming(false);
   };
 
+  const handleDownload = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setDownloading(true);
+    try {
+      const response = await fetch(`/uploads/${photo.filename}`);
+      const blob = await response.blob();
+      
+      let saved = false;
+      if (directoryHandle) {
+        saved = await saveFileToDirectory(photo.originalName, blob);
+      }
+
+      if (!saved) {
+        if ("showSaveFilePicker" in window) {
+          try {
+            const handle = await (window as any).showSaveFilePicker({
+              suggestedName: photo.originalName,
+              types: [{
+                description: "Media File",
+                accept: { [blob.type]: [`.${photo.filename.split(".").pop()}`] },
+              }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            saved = true;
+          } catch (err) {
+            if ((err as Error).name !== "AbortError") console.error(err);
+          }
+        }
+      }
+
+      if (!saved) {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = photo.originalName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <motion.div
       layout
@@ -249,6 +296,65 @@ export default function PhotoCard({ photo, viewMode, onDelete, onUpdateTags, onR
           {new Date(photo.uploadDate).toLocaleDateString()}
         </p>
       </div>
+
+      <AnimatePresence>
+        {contextMenu && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            className="fixed z-[100] min-w-[180px] bg-white border border-stone-200 rounded-xl shadow-2xl py-1 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ContextMenuItem 
+              icon={<Maximize2 size={16} />} 
+              label="View Full Size" 
+              onClick={onView} 
+            />
+            <ContextMenuItem 
+              icon={downloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} 
+              label="Download" 
+              onClick={handleDownload} 
+            />
+            <hr className="my-1 border-stone-100" />
+            <ContextMenuItem 
+              icon={<Edit2 size={16} />} 
+              label="Rename" 
+              onClick={() => setIsRenaming(true)} 
+            />
+            <ContextMenuItem 
+              icon={<Tag size={16} />} 
+              label="Edit Tags" 
+              onClick={() => setIsEditingTags(true)} 
+            />
+            <ContextMenuItem 
+              icon={<FolderCheck size={16} />} 
+              label="Move to Folder" 
+              onClick={onMove} 
+            />
+            <hr className="my-1 border-stone-100" />
+            <ContextMenuItem 
+              icon={<Trash2 size={16} />} 
+              label="Delete" 
+              onClick={onDelete} 
+              className="text-red-600 hover:bg-red-50" 
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
+  );
+}
+
+function ContextMenuItem({ icon, label, onClick, className = "" }: { icon: React.ReactNode, label: string, onClick: () => void, className?: string }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className={`w-full flex items-center gap-3 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors ${className}`}
+    >
+      <span className="text-stone-400">{icon}</span>
+      {label}
+    </button>
   );
 }
